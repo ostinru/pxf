@@ -27,4 +27,5 @@ include 'pxf-service',
         'pxf-jdbc',
         'pxf-json',
         'pxf-s3',
-        'pxf-diagnostic'
+        'pxf-diagnostic',
+        'automation'

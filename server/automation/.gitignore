@@ -1,0 +1,8 @@
+/automation_logs
+/build
+/bin
+jsystem*.log
+jsystem.*
+/log 
+runnerState.properties
+regression.diffs
