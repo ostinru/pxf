@@ -19,8 +19,12 @@
 # * limitations under the License.
 # */
 
-# load singlecluster environment
-. $bin/../../bin/gphd-env.sh
+export LOGS_ROOT=/tmp/logs
+export PIDS_ROOT=/tmp/pids
+export HADOOP_STORAGE_ROOT=/tmp/hadoop
+export HBASE_STORAGE_ROOT=/tmp/hbase
+export COMMON_JAVA_OPTS=${COMMON_JAVA_OPTS:-}
+export COMMON_CLASSPATH=${COMMON_CLASSPATH:-}
 
 # Set environment variables here.
 

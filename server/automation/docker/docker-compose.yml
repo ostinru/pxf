@@ -1,0 +1,178 @@
+services:
+  # Hadoop NameNode
+  namenode:
+    image: apache/hadoop:3.3.6
+    container_name: hadoop-namenode
+    hostname: namenode
+    ports:
+      - "9870:9870"  # NameNode web UI
+      - "9002:9000"  # HDFS port (host:9002 -> container:9000)
+    environment:
+      - ENSURE_NAMENODE_DIR=/tmp/hadoop/dfs/name
+      - CLUSTER_NAME=test
+    volumes:
+      - ./hadoop-config:/opt/hadoop/etc/hadoop
+    command: ["hdfs", "namenode"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hadoop DataNode
+  datanode:
+    image: apache/hadoop:3.3.6
+    container_name: hadoop-datanode
+    hostname: datanode
+    depends_on:
+      namenode:
+        condition: service_healthy
+    environment:
+      - SERVICE_PRECONDITION="namenode:9870"
+    volumes:
+      - ./hadoop-config:/opt/hadoop/etc/hadoop
+    command: ["hdfs", "datanode"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9864"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # YARN ResourceManager
+  resourcemanager:
+    image: apache/hadoop:3.3.6
+    container_name: hadoop-resourcemanager
+    hostname: resourcemanager
+    depends_on:
+      namenode:
+        condition: service_healthy
+    ports:
+      - "8088:8088"  # ResourceManager web UI
+    environment:
+      - SERVICE_PRECONDITION="namenode:9870"
+#      - YARN_LOG_DIR=/tmp/logs
+#      - HADOOP_LOG_DIR=/tmp/logs
+    volumes:
+      - ./hadoop-config:/opt/hadoop/etc/hadoop
+    command: ["yarn", "resourcemanager"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # YARN NodeManager
+  nodemanager:
+    image: apache/hadoop:3.3.6
+    container_name: hadoop-nodemanager
+    hostname: nodemanager
+    depends_on:
+      resourcemanager:
+        condition: service_healthy
+    ports:
+      - "8042:8042"  # NodeManager web UI
+    environment:
+      - SERVICE_PRECONDITION="resourcemanager:8088"
+      - YARN_LOG_DIR=/tmp/logs
+      - HADOOP_LOG_DIR=/tmp/logs
+    volumes:
+      - ./hadoop-config:/opt/hadoop/etc/hadoop
+    command: ["yarn", "nodemanager"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8042"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hive Metastore
+  metastore:
+    image: apache/hive:3.1.3
+    container_name: hadoop-metastore
+    hostname: metastore
+    depends_on:
+      namenode:
+        condition: service_healthy
+    ports:
+      - "9083:9083"  # Metastore port
+    environment:
+      - SERVICE_PRECONDITION="namenode:9870"
+      - DB_DRIVER=derby
+      - SERVICE_NAME=metastore
+    volumes:
+       # - metastore:/opt/metastore
+       - ./hive-config:/opt/hive/conf
+       - ./tez:/opt/tez/conf
+    command: "/opt/hive/conf/hive-env.sh && hive --service metastore --verbose -p 9083"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "cat /proc/net/tcp | grep :237B || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hive Server
+  hiveserver:
+    image: apache/hive:3.1.3
+    container_name: hadoop-hiveserver
+    hostname: hiveserver
+    depends_on:
+      metastore:
+        condition: service_healthy
+    ports:
+      - "10000:10000"  # HiveServer2 port
+      - "10002:10002"  # HiveServer2 web UI
+    environment:
+      - SERVICE_PRECONDITION="metastore:9083"
+    volumes:
+      - ./hive-config:/opt/hive/conf
+    command: ["hive", "--service", "hiveserver2"]
+    healthcheck:
+      test: ["CMD", "sh", "-c", "cat /proc/net/tcp | grep :2710 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    ports:
+      - "9001:9001"  # MinIO Console (Web UI)
+      - "9000:9000"  # MinIO API
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_CONSOLE_ADDRESS=:9001
+    volumes:
+      - minio_data:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Greenplum + PXF
+  gpdb-pxf:
+    build:
+      context: ./gpdb
+      dockerfile: Dockerfile
+    container_name: gpdb-pxf
+    hostname: gpdb-pxf
+    ports:
+      - "5432:5432"   # GPDB
+      - "5888:5888"   # PXF
+    volumes:
+      - gpdb_data:/data
+    # Add depends_on if you want to wait for Hadoop/Hive/Minio
+    # depends_on:
+    #   - namenode
+    #   - hiveserver
+    #   - minio
+
+volumes:
+  namenode:
+  datanode:
+  metastore:
+  minio_data:
+  gpdb_data: 

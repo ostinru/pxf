@@ -19,4 +19,9 @@
 			for DAGs</description>
 	</property>
 
+	<property>
+		<name>tez.use.cluster.hadoop-libs</name>
+		<value>true</value>
+	</property>
+
 </configuration>

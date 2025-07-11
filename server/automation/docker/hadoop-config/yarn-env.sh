@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# load singlecluster environment
-. $bin/../../bin/gphd-env.sh
+export LOGS_ROOT=/tmp/logs
+export PIDS_ROOT=/tmp/pids
+export HADOOP_STORAGE_ROOT=/tmp/hadoop
+export COMMON_JAVA_OPTS=${COMMON_JAVA_OPTS:-}
+export COMMON_CLASSPATH=${COMMON_CLASSPATH:-}
 
 export YARN_LOG_DIR=$LOGS_ROOT
 export YARN_OPTS="$YARN_OPTS $COMMON_JAVA_OPTS"
