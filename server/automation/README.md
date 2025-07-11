@@ -1,7 +1,7 @@
 # Pxf Automation
 
 Contains all the PXF automation tests for the various functionalities of PXF.
-The automation framework uses TestNg APIs and tools to complete automatic testing for PXF. Compiling and running TestNg test cases being used via maven.
+The automation framework uses TestNg APIs and tools to complete automatic testing for PXF. Compiling and running TestNg test cases being used via gradle.
 The Automation framework also exposes simple APIs for performing actions on services including GPDB, PXF, HDFS, HBase and Hive or to use utilities such data comparison, reading and writing files , using tools such pxf_regress for query analysis and more.
 
 ## Dependencies
@@ -130,7 +130,7 @@ Note: If you get an error saying that the jar does not exist, ensure that you ha
 - `src/main/java` - contains related classes and utilities for the test
 - `src/test/java` - contains the TestNG cases.
 - `sqlrepo` - contains SQL test cases.
-- `src/main/java/org/greenplum/pxf/automation/components` - contains all the supported services/components with simple API abstractions.
+- `src/main/java/org/greenplum/pxf/automation/components` - contains all the supported services/components with simple API abstractions. [jsystem-objects](https://github.com/Top-Q/jsystem-docs/wiki)
 
 ### General Automation Architecture
 
