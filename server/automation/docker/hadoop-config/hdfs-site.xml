@@ -19,7 +19,7 @@
 <configuration>
    <property>
       <name>dfs.permissions</name>
-      <value>true</value>
+      <value>false</value> <!-- FIXME: regression? old: true -->
    </property>
     <property>
         <name>dfs.support.append</name>
@@ -31,7 +31,7 @@
    </property>
     <property>
         <name>dfs.replication</name>
-        <value>3</value>
+        <value>1</value> <!-- FIXME: regression? old: 3 -->
     </property>
    <property>
 	   <name>dfs.datanode.socket.write.timeout</name> 
@@ -50,11 +50,11 @@
 	 </property>
     <property>
         <name>dfs.namenode.rpc-address</name>
-        <value>0.0.0.0:8020</value>
+        <value>namenode:8020</value>
     </property>
     <property>
         <name>dfs.namenode.http-address</name>
-        <value>0.0.0.0:9870</value>
+        <value>namenode:9870</value>
     </property>
   <!--  <property>
       <name>dfs.namenode.name.dir</name>
