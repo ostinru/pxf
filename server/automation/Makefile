@@ -2,8 +2,8 @@
 
 DEB_DIR=../../downloads
 DOCKER_DEB_DIR=docker/gpdb/debs
-GPDB_DEB=$(DEB_DIR)/greenplum-db-6_6.0.0-jammy-dev_amd64.deb
-PXF_DEB=$(DEB_DIR)/greenplum-pxf-6_6.10.1-jammy-dev_amd64.deb
+GPDB_DEB=$(DEB_DIR)/greenplum-db-6_6.0.0-bionic-dev_amd64.deb
+PXF_DEB=$(DEB_DIR)/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb
 
 all: copy-debs docker-up test
 
