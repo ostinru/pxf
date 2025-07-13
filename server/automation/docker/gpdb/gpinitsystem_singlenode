@@ -61,6 +61,10 @@ declare -a DATA_DIRECTORY=(/data0/database/primary \
 
 MASTER_HOSTNAME=mdw
 
+# The IP address of the Greenplum Database master instance.
+# This should be set to 0.0.0.0 to listen on all interfaces.
+MASTER_IP_ADDRESS=0.0.0.0
+
 # The location where the data directory will be created on the
 # Greenplum master host.
 # You must make sure that the user who runs gpinitsystem

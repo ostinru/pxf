@@ -1,14 +1,19 @@
 #!/bin/bash
 set -e
 
+cat <<-'EOF'
 
-mkdir -p /data0/database/master /data0/database/primary /data0/database/mirror
-chown -R gpadmin:gpadmin /data0
+======================================================================
+  ____ _                 _ _                            ____  ____
+ / ___| | ___  _   _  __| | |__   ___ _ __ _ __ _   _  |  _ \| __ )
+| |   | |/ _ \| | | |/ _` | '_ \ / _ \ '__| '__| | | | | | | |  _ \
+| |___| | (_) | |_| | (_| | |_) |  __/ |  | |  | |_| | | |_| | |_) |
+ \____|_|\___/ \__,_|\__,_|_.__/ \___|_|  |_|   \__, | |____/|____/
+                                                |___/
+======================================================================
+EOF
 
-
-/prepare-gpdb-pxf.sh
-
-su - gpadmin -c /start-gpdb-pxf.sh
+sudo -H -u gpadmin /prepare-gpdb-pxf.sh
 
 # Keep container running
 tail -f /dev/null

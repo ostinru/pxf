@@ -158,17 +158,20 @@ services:
       context: ./gpdb
       dockerfile: Dockerfile
     container_name: gpdb-pxf
-    hostname: gpdb-pxf
+    hostname: mdw
     ports:
       - "5432:5432"   # GPDB
       - "5888:5888"   # PXF
     volumes:
       - gpdb_data:/data
-    # Add depends_on if you want to wait for Hadoop/Hive/Minio
-    # depends_on:
-    #   - namenode
-    #   - hiveserver
-    #   - minio
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5888/actuator/health", "-H 'Accept: application/json'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   namenode:

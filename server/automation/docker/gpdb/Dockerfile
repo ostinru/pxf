@@ -1,11 +1,17 @@
 FROM ubuntu:18.04
 
+# Expose default ports
+EXPOSE 5432 5432
+EXPOSE 5888 5888
+
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y wget lsb-release locales openjdk-11-jre-headless iproute2 sudo python-psutil && \
     locale-gen en_US.UTF-8 && \
+    locale-gen ru_RU.CP1251 && \
+    locale-gen ru_RU.UTF-8 && \
     update-locale LANG=en_US.UTF-8
 
 ENV LANG en_US.UTF-8
@@ -27,40 +33,17 @@ RUN apt-get install -y /tmp/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb && \
 COPY configs/90-cbdb-sysctl.conf /etc/sysctl.conf
 COPY configs/90-cbdb-limits.conf /etc/security/limits.d/90-cbdb-limits.conf
 COPY gpinitsystem_singlenode /tmp/
+
 COPY prepare-gpdb-pxf.sh /prepare-gpdb-pxf.sh
-COPY start-gpdb-pxf.sh /start-gpdb-pxf.sh
 RUN chmod +x /prepare-gpdb-pxf.sh
-RUN chmod +x /start-gpdb-pxf.sh
 
-# Expose default ports
-EXPOSE 5432 5432
-EXPOSE 5888 5888
 
-# RUN su - gpadmin -c /prepare-gpdb-pxf.sh
-#RUN /prepare-gpdb-pxf.sh
+# Add gpadmin to sudoers and run preparation scripts as gpadmin
+RUN usermod -a -G sudo gpadmin && \
+  echo "gpadmin:cbdb@123" | chpasswd && \
+  echo "gpadmin        ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers && \
+  echo "root           ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Allow password
-RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-
-
-# Base system setup complete, switch to gpadmin to set up everything else
-USER gpadmin
-
-# ----------------------------------------------------------------------
-# Configure passwordless SSH access for 'gpadmin' user
-# ----------------------------------------------------------------------
-# The script sets up SSH key-based authentication for the 'gpadmin' user,
-# allowing passwordless SSH access. It generates a new SSH key pair if one
-# does not already exist, and configures the necessary permissions.
-# ----------------------------------------------------------------------
-RUN mkdir /home/gpadmin/.ssh && chown -R gpadmin:gpadmin /home/gpadmin/.ssh && \
-  ssh-keygen -t rsa -b 4096 -m PEM -C gpadmin -f /home/gpadmin/.ssh/id_rsa -P "" && \
-  cat /home/gpadmin/.ssh/id_rsa.pub >> /home/gpadmin/.ssh/authorized_keys && \
-  chmod 0600 /home/gpadmin/.ssh/authorized_keys
-
-USER root
-
 ENTRYPOINT ["/entrypoint.sh"]

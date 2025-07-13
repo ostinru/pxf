@@ -25,7 +25,7 @@ sudo rm -rf /run/nologin
 
 # ## Set gpadmin ownership - Clouberry install directory and supporting
 # ## cluster creation files.
-sudo chown -R gpadmin.gpadmin /usr/local/cloudberry-db \
+chown -R gpadmin.gpadmin /usr/local/cloudberry-db \
                               /tmp/gpinitsystem_singlenode \
                               /tmp/gpdb-hosts
 
