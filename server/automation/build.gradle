@@ -2,9 +2,7 @@
 // This module uses common settings from parent build.gradle
 
 ext {
-    hadoopVersion = '2.10.2'
-    hbaseVersion = '1.3.2.1'
-    hiveVersion = '1.1.0'
+    avroVersion = '1.7.7'
     jsystemVersion = '6.1.06'
     dockerJavaVersion = '3.5.3'
     powermockVersion = '1.6.4'
@@ -115,6 +113,15 @@ dependencies {
 // Test settings for automation module
 test {
     useTestNG()
+    
+    environment "user", "gpadmin"
+    environment "user.name", "gpadmin"
+    environment "PGUSER", "gpadmin"
+    environment "PGPORT", "5432"
+    environment "JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64"
+    environment "PXF_HOME", "/opt/greenplum-pxf-6/"
+    environment "PXF_BASE", "/home/gpadmin/pxf"
+    
     // JSystem properties
     systemProperty 'jsystem.properties', file('jsystem.properties').absolutePath
     systemProperty 'automation.logs', file('automation_logs').absolutePath

@@ -15,6 +15,7 @@
     <gpdb2>
         <class>org.greenplum.pxf.automation.components.gpdb.Gpdb</class>
         <host>localhost</host>
+        <userName>gpadmin</userName>
         <masterHost>localhost</masterHost>
         <db>pxfautomation_encoding</db>
         <encoding>WIN1251</encoding>
@@ -28,6 +29,7 @@
         <port>8020</port>
         <workingDirectory>tmp/pxf_automation_data/__UUID__</workingDirectory>
         <scheme>hdfs</scheme>
+        <useDatanodeHostname>true</useDatanodeHostname>
     </hdfs>
 
     <file>

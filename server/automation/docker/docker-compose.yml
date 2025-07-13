@@ -6,7 +6,7 @@ services:
     hostname: namenode
     ports:
       - "9870:9870"  # NameNode web UI
-      - "9002:9000"  # HDFS port (host:9002 -> container:9000)
+      - "8020:8020"  # HDFS port (host:8020 -> container:8020)
     environment:
       - ENSURE_NAMENODE_DIR=/tmp/hadoop/dfs/name
       - CLUSTER_NAME=test
@@ -80,6 +80,25 @@ services:
     command: ["yarn", "nodemanager"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8042"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Zookeeper
+  zookeeper:
+    image: zookeeper:3.8
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"  # Zookeeper client port
+    environment:
+      - ZOO_MY_ID=1
+      - ZOO_SERVERS=server.1=zookeeper:2888:3888;2181
+    volumes:
+      - ./zookeeper-config:/conf
+    command: ["zkServer.sh", "start-foreground"]
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181", "|", "grep", "imok"]
       interval: 30s
       timeout: 10s
       retries: 3
