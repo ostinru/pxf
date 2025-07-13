@@ -7,6 +7,7 @@
     <gpdb>
         <class>org.greenplum.pxf.automation.components.gpdb.Gpdb</class>
         <host>localhost</host>
+        <userName>gpadmin</userName>
         <masterHost>localhost</masterHost>
         <db>pxfautomation</db>
     </gpdb>
