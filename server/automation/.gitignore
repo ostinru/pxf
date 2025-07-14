@@ -6,3 +6,4 @@ jsystem.*
 /log 
 runnerState.properties
 regression.diffs
+tempClusterConfDirectory
