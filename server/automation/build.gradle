@@ -104,10 +104,12 @@ dependencies {
     implementation "org.apache.hive:hive-jdbc:$hiveVersion"
     implementation 'org.apache.orc:orc-core:1.6.13'
     implementation 'org.mockito:mockito-all:1.9.5'
+    implementation 'org.buildobjects:jproc:2.8.2'
 
     // experimental dependencies
     implementation "com.github.docker-java:docker-java:$dockerJavaVersion"
-    implementation "com.github.docker-java:docker-java-transport-httpclient5:$dockerJavaVersion"
+    implementation "com.github.docker-java:docker-java-transport-zerodep:$dockerJavaVersion"
+
 }
 
 // Test settings for automation module
