@@ -76,6 +76,7 @@
         <class>org.greenplum.pxf.automation.components.hive.Hive</class>
         <host>localhost</host>
         <port>10000</port>
+        <userName>gpadmin</userName>
     </hive>
 
     <regress>
