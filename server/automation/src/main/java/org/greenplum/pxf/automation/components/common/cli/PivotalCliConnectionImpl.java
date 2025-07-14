@@ -18,6 +18,7 @@ import com.aqua.sysobj.conn.Position;
  * extends {@link CliConnectionImpl} for PXF needs. Using the {@link PivotalSshRsa} modified SSH
  * class for using private key connection.
  */
+@Deprecated
 public class PivotalCliConnectionImpl extends CliConnectionImpl {
 
 	private ArrayList<Prompt> prompts = new ArrayList<Prompt>();;

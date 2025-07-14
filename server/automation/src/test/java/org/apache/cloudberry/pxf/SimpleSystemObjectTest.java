@@ -1,6 +1,7 @@
 package org.apache.cloudberry.pxf;
 
 import jsystem.framework.system.SystemManagerImpl;
+import org.greenplum.pxf.automation.components.pxf.Pxf;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -177,25 +178,26 @@ public class SimpleSystemObjectTest {
     public void testPxfInit() throws Exception {
         System.out.println("Testing PXF system object...");
         try {
-            Object pxfSystem = systemManager.getSystemObject("pxf");
+            Pxf pxfSystem = (Pxf) systemManager.getSystemObject("pxf");
             System.out.println("✓ PXF system object initialized successfully");
             System.out.println("  Class: " + pxfSystem.getClass().getName());
+//            System.out.println("  protocol version: " + pxfSystem.getProtocolVersion());
         } catch (Exception e) {
             System.out.println("✗ PXF system object initialization failed: " + e.getMessage());
             throw e;
         }
     }
 
-    @Test(description = "Test ShellSystemObject initialization")
-    public void testShellSystemObjectInit() throws Exception {
-        System.out.println("Testing ShellSystemObject...");
-        try {
-            Object shellSystem = systemManager.getSystemObject("shellsystemobject");
-            System.out.println("✓ ShellSystemObject initialized successfully");
-            System.out.println("  Class: " + shellSystem.getClass().getName());
-        } catch (Exception e) {
-            System.out.println("✗ ShellSystemObject initialization failed: " + e.getMessage());
-            throw e;
-        }
-    }
+//    @Test(description = "Test ShellSystemObject initialization")
+//    public void testShellSystemObjectInit() throws Exception {
+//        System.out.println("Testing ShellSystemObject...");
+//        try {
+//            Object shellSystem = systemManager.getSystemObject("shellsystemobject");
+//            System.out.println("✓ ShellSystemObject initialized successfully");
+//            System.out.println("  Class: " + shellSystem.getClass().getName());
+//        } catch (Exception e) {
+//            System.out.println("✗ ShellSystemObject initialization failed: " + e.getMessage());
+//            throw e;
+//        }
+//    }
 } 

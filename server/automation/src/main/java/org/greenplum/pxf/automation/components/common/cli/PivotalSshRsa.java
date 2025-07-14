@@ -10,6 +10,7 @@ import ch.ethz.ssh2.Connection;
  * Extends {@link SSH} to connect using private key if exists instead of password connection.
  *
  */
+@Deprecated
 public class PivotalSshRsa extends SSH {
 
 	private File privateKeyFile;

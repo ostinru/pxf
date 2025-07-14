@@ -1,35 +1,79 @@
 package org.greenplum.pxf.automation.components.common;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import com.aqua.sysobj.conn.CliConnection;
+import com.aqua.sysobj.conn.CmdConnection;
+import com.aqua.sysobj.conn.LinuxDefaultCliConnection;
+import com.github.dockerjava.api.async.ResultCallback;
+import com.github.dockerjava.api.command.ExecCreateCmdResponse;
+import com.github.dockerjava.api.command.ExecStartCmd;
+import com.github.dockerjava.api.model.Frame;
+import com.github.dockerjava.api.model.StreamType;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
+import com.github.dockerjava.core.DockerClientBuilder;
+import com.github.dockerjava.core.DockerClientConfig;
+import com.github.dockerjava.transport.DockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
+import lombok.SneakyThrows;
+import org.buildobjects.process.ProcBuilder;
+import org.buildobjects.process.ProcResult;
+import org.buildobjects.process.TimeoutException;
 import org.greenplum.pxf.automation.utils.curl.CurlUtils;
 import jsystem.framework.report.Reporter;
 
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.lang.StringUtils;
 
-import org.greenplum.pxf.automation.components.common.cli.PivotalCliConnectionImpl;
 import org.greenplum.pxf.automation.components.common.cli.ShellCommandErrorException;
-import systemobject.terminal.Prompt;
 
 import com.aqua.sysobj.conn.CliCommand;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
+
+import com.github.dockerjava.api.DockerClient;
+
+import javax.annotation.Nullable;
+
 
 /**
  * General Shell system objects, each System Object can extend it or use it.
  */
 public class ShellSystemObject extends BaseSystemObject {
-    private PivotalCliConnectionImpl connection;
+    private DockerClient dockerClient;
+    // Find your path by running: `docker context ls`
+    // FIXME:
+    private String dockerHost = "unix:///Users/ostinru/.docker/run/docker.sock";  // "unix:///var/run/docker.sock";
+
+    @Deprecated
     private String host = "localHost";
+    @Deprecated
     private String masterHost = "localHost";
+    @Deprecated
     private String hostName = "";
+    @Deprecated
     private String userName;
+    @Deprecated
     private String password;
+    @Deprecated
     private String privateKey;
+    @Nullable
+    private String containerId;
+
     private String lastCmdResult = "";
-    private int lastCommandExitCode = 0;
+    private int lastCommandExitCode = EXIT_CODE_NOT_EXISTS;
     // ignore passing local env vars to ssh connection
     private boolean ignoreEnvVars = false;
 
@@ -93,59 +137,45 @@ public class ShellSystemObject extends BaseSystemObject {
             setPassword("");
         }
 
-        ReportUtils.report(report, getClass(), "Establish connection to: "
-                + host + " (User Name: " + getUserName() + " Password: "
-                + getPassword() + ")");
-        connection = new PivotalCliConnectionImpl(host, getUserName(),
-                getPassword());
+        ReportUtils.report(report, getClass(), "Establish connection to docker at: " + dockerHost);
 
-        /**
-         * mention SSH_RSA connection type
-         */
-        connection.setProtocol("ssh-rsa");
+        DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
+                .withDockerHost(dockerHost)
+                .withDockerTlsVerify(false)
+                .build();
 
-        /**
-         * Direct to Private Key instead of Password based connection.
-         */
-        String privateKeyFileName = privateKey;
-        if (privateKeyFileName == null) {
-            privateKeyFileName = System.getProperty("user.home") + "/.ssh/id_rsa";
-        }
-        File privateKeyFile = new File(privateKeyFileName);
-        connection.setPrivateKey(privateKeyFile);
-        ReportUtils.report(
-                report,
-                getClass(),
-                "Attempt to create SSH-RSA connection (User: "
-                        + getUserName() + " Public-Key File:"
-                        + privateKeyFile.getAbsolutePath() + ")");
+        DockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .maxConnections(100)
+                .connectionTimeout(Duration.ofSeconds(commandTimeout))
+                .responseTimeout(Duration.ofSeconds(commandTimeout * 10))
+                .build();
 
-        /**
-         * PivotalCliConnectionImpl is setting the prompt to be '#'.Add the
-         * required prompt to the connection.
-         */
-        Prompt p = new Prompt();
-        p.setCommandEnd(true);
-        p.setPrompt("#");
+        dockerClient = DockerClientBuilder.getInstance(config)
+                .withDockerHttpClient(httpClient)
+                .build();
 
-        connection.addPrompts(new Prompt[] { p });
-        connection.init();
-
-        if (!ignoreEnvVars) {
-            runCommand(getExportForRequiredEnvVars());
-        }
+        // FIXME:
+        // if (!ignoreEnvVars) {
+        //     runCommand(getExportForRequiredEnvVars());
+        // }
 
         ReportUtils.stopLevel(report);
     }
 
     @Override
     public void close() {
-        if (connection != null) {
-            connection.disconnect();
-            connection.close();
+        if (dockerClient != null) {
+            try {
+                dockerClient.close();
+            } catch (Exception e) {
+                // Ignore close errors
+            }
         }
         super.close();
     }
+
 
     /**
      * execute command-line command, verify exit code to be EXIT_CODE_SUCCESS
@@ -155,10 +185,115 @@ public class ShellSystemObject extends BaseSystemObject {
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void runCommand(String command) throws IOException,
-            ShellCommandErrorException {
-        runCommand(command, EXIT_CODE_SUCCESS);
+    public void runCommand(String command) throws IOException, ShellCommandErrorException {
+        runCommand(containerId, command, EXIT_CODE_SUCCESS);
     }
+
+    /**
+     * execute command-line command, verify exit code to be EXIT_CODE_SUCCESS
+     * and store the result in lastCmdResult.
+     *
+     * @param containerId container id to run command in
+     * @param command command to execute
+     * @throws IOException
+     * @throws ShellCommandErrorException
+     */
+    @Deprecated // FIXME: fix usages!
+    public void runCommand(String containerId, String command) throws IOException, ShellCommandErrorException {
+        runCommand(containerId, command, EXIT_CODE_SUCCESS);
+    }
+
+    /**
+     * execute command-line command, check expectedExitCode and store the result
+     * in lastCmdResult.
+     *
+     * @param containerId container id to run command in
+     * @param command command to execute
+     * @param expectedExitCode to check after command execution
+     * @throws IOException
+     * @throws ShellCommandErrorException
+     */
+    @Deprecated // FIXME: fix usages!
+    public void runCommand(String containerId, String command, int expectedExitCode)
+            throws IOException, ShellCommandErrorException {
+        String commandAdditionalMessage = "("
+                + getHost()
+                + ((StringUtils.isEmpty(getHostName())) ? (")") : ("/"
+                        + getHostName() + ")"));
+        ReportUtils.startLevel(report, getClass(), commandAdditionalMessage,
+                command);
+
+        // Create command
+        ExecCreateCmdResponse execCreateResp = dockerClient.execCreateCmd(containerId)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withCmd("sh", "-c", command)
+                .exec();
+
+        // Run command:
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
+
+        ExecStartCmd startCmd = dockerClient.execStartCmd(execCreateResp.getId())
+                .withDetach(false)
+                .withTty(false);
+
+        try {
+            startCmd.exec(new ResultCallback.Adapter< Frame >() {
+                        @Override
+                        public void onNext(Frame frame) {
+                            try {
+                                if (frame.getStreamType() == StreamType.STDOUT) {
+                                    outputStream.write(frame.getPayload());
+                                } else if (frame.getStreamType() == StreamType.STDERR) {
+                                    errorStream.write(frame.getPayload());
+                                }
+                            } catch (IOException e) {
+                                // ignore
+                            }
+                        }
+                    }).awaitCompletion(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new ShellCommandErrorException(e.getMessage());
+        }
+
+        // get stdout & exit code
+        lastCmdResult = outputStream.toString("UTF-8") + errorStream.toString("UTF-8");
+        long exitCode = dockerClient.inspectExecCmd(execCreateResp.getId())
+                .exec()
+                .getExitCodeLong();
+
+
+        ReportUtils.report(report, getClass(), lastCmdResult);
+
+        // if expectedExitCode=EXIT_CODE_NOT_EXISTS it means no need to check
+        // exit code
+        if (expectedExitCode != EXIT_CODE_NOT_EXISTS) {
+            // get the last ran command exit code
+            lastCommandExitCode = (int) exitCode;
+            // throw exception if last command failed
+            if (lastCommandExitCode != expectedExitCode) {
+                throw new ShellCommandErrorException("Command: \"" + command
+                        + "\" returned exit code " + lastCommandExitCode
+                        + " expected: " + expectedExitCode);
+            }
+        }
+        ReportUtils.stopLevel(report);
+    }
+
+
+    /**
+     * execute command-line command on local machine, verify exit code to be EXIT_CODE_SUCCESS
+     * and store the result in lastCmdResult.
+     *
+     * @param command command to execute
+     * @throws IOException
+     * @throws ShellCommandErrorException
+     */
+    public void runLocalCommand(String command, Map<String, String> env) throws IOException, ShellCommandErrorException {
+        runLocalCommand(command, env, EXIT_CODE_SUCCESS);
+    }
+
 
     /**
      * execute command-line command, check expectedExitCode and store the result
@@ -169,29 +304,32 @@ public class ShellSystemObject extends BaseSystemObject {
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void runCommand(String command, int expectedExitCode)
-            throws IOException, ShellCommandErrorException {
-        String commandAddtionalMessage = "("
-                + getHost()
-                + ((StringUtils.isEmpty(getHostName())) ? (")") : ("/"
-                        + getHostName() + ")"));
-        ReportUtils.startLevel(report, getClass(), commandAddtionalMessage,
-                command);
+    public void runLocalCommand(String command, Map<String, String> env, int expectedExitCode) throws IOException, ShellCommandErrorException {
+        ReportUtils.startLevel(report, getClass(), command);
 
-        CliCommand cmd = new CliCommand();
-        cmd.setTimeout(commandTimeout);
-        cmd.setCommand(command);
+        ProcBuilder procBuilder = new ProcBuilder(command)
+                .withTimeoutMillis(commandTimeout * 1000);
 
-        connection.command(cmd);
-        lastCmdResult = cmd.getResult();
+        if (env != null) {
+            procBuilder.withVars(env);
+        }
 
+        ProcResult result;
+        try {
+            result = procBuilder.run();
+        } catch (TimeoutException ex) {
+            throw new ShellCommandErrorException(ex.getMessage());
+        }
+
+        lastCmdResult = result.getOutputString() + result.getErrorString();
         ReportUtils.report(report, getClass(), lastCmdResult);
+        lastCommandExitCode = result.getExitValue();
 
         // if expectedExitCode=EXIT_CODE_NOT_EXISTS it means no need to check
         // exit code
         if (expectedExitCode != EXIT_CODE_NOT_EXISTS) {
             // get the last ran command exit code
-            lastCommandExitCode = getLastExitCode();
+            lastCommandExitCode = getLastLocalExitCode();
             // throw exception if last command failed
             if (lastCommandExitCode != expectedExitCode) {
                 throw new ShellCommandErrorException("Command: \"" + command
@@ -207,36 +345,19 @@ public class ShellSystemObject extends BaseSystemObject {
      * performing command otherwise it might not get the exit code and will
      * raise a {@link NumberFormatException}
      */
-    private int getLastExitCode() {
-        // get exit code
-        CliCommand cmd = new CliCommand();
-        cmd.setTimeout(commandTimeout);
-        cmd.setCommand("echo $?");
-        connection.command(cmd);
-
-        // split result to new line
-        String[] splitArray = cmd.getResult().split(System.lineSeparator());
-        // go over splitResult and look for Numeric result
-        for (int i = 0; i < splitArray.length; i++) {
-            try {
-                int result = Integer.parseInt(splitArray[i].trim());
-                return result;
-            } catch (Exception e) {
-                continue;
-            }
-        }
-        // if not found return EXIT_CODE_NOT_EXISTS
-        return EXIT_CODE_NOT_EXISTS;
+    private int getLastLocalExitCode() {
+        return lastCommandExitCode;
     }
 
     /**
      * perform jps command
      *
+     * @param containerId container id to run command in
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    protected void jps() throws IOException, ShellCommandErrorException {
-        runCommand("jps");
+    protected void jps(String containerId) throws IOException, ShellCommandErrorException {
+        runCommand(containerId, "jps");
     }
 
     /**
@@ -250,7 +371,7 @@ public class ShellSystemObject extends BaseSystemObject {
      */
     public String curl(String host, String port, String path) throws Exception {
         CurlUtils curl = new CurlUtils(host, port, path);
-        runCommand(curl.getCommand());
+        runLocalCommand(curl.getCommand(), null);
         return parseCurlResponse();
     }
 
@@ -267,7 +388,7 @@ public class ShellSystemObject extends BaseSystemObject {
      */
     public String curl(String host, String port, String path, String requestType, Map<String, String> headers, List<String> params) throws Exception {
         CurlUtils curl = new CurlUtils(host, port, path, requestType, headers, params);
-        runCommand(curl.getCommand());
+        runLocalCommand(curl.getCommand(), null);
         return parseCurlResponse();
     }
 
@@ -302,8 +423,9 @@ public class ShellSystemObject extends BaseSystemObject {
     /**
      * Close shell connection
      */
+    @SneakyThrows
     public void disconnect() {
-        connection.disconnect();
+        dockerClient.close();
     }
 
     /**
@@ -367,122 +489,167 @@ public class ShellSystemObject extends BaseSystemObject {
     /**
      * Delete directory recursively
      *
+     * @param containerId container id to run command in
      * @param directoryToDelete
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void deleteDirectory(String directoryToDelete) throws IOException,
+    public void deleteDirectory(String containerId, String directoryToDelete) throws IOException,
             ShellCommandErrorException {
-        runCommand("rm -rf " + directoryToDelete);
-    }
-
-    /**
-     * Returns sshpass command if password is provided.
-     *
-     * @param password
-     * @return sshpass command or empty string
-     */
-    private String getSshPass(String password) {
-        String sshPass = "";
-        if (!StringUtils.isEmpty(password)) {
-            sshPass = "sshpass -p '" + password + "' ";
-        }
-        return sshPass;
+        runCommand(containerId, "rm -rf " + directoryToDelete);
     }
 
     /**
      * copy from remote machine to local path
      *
-     * @param user host's user
-     * @param password hosts's password
-     * @param host host name or IP
+     * @param containerId container id to run command in
      * @param fromPath remote path to copy from
      * @param toPath local destination path
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void copyFromRemoteMachine(String user, String password,
-                                      String host, String fromPath,
-                                      String toPath) throws IOException,
-            ShellCommandErrorException {
-        runCommand(getSshPass(password) + "scp -o StrictHostKeyChecking=no -r "
-                + user + "@" + host + ":" + fromPath + " " + toPath);
+    public void copyFromRemoteMachine(String containerId, String fromPath, String toPath) throws ShellCommandErrorException {
+        File dest = new File(toPath);
+        if (!dest.exists()) {
+            dest.mkdirs();
+        }
+
+        try (InputStream tarStream = dockerClient.copyArchiveFromContainerCmd(containerId, fromPath).exec()) {
+            // Untar the stream to the destination directory
+            try (TarArchiveInputStream tarIn = new TarArchiveInputStream(tarStream)) {
+                TarArchiveEntry entry;
+                while ((entry = tarIn.getNextTarEntry()) != null) {
+                    File outFile = new File(dest, entry.getName());
+                    if (entry.isDirectory()) {
+                        outFile.mkdirs();
+                    } else {
+                        outFile.getParentFile().mkdirs();
+                        try (OutputStream out = new FileOutputStream(outFile)) {
+                            byte[] buffer = new byte[8192];
+                            int len;
+                            while ((len = tarIn.read(buffer)) != -1) {
+                                out.write(buffer, 0, len);
+                            }
+                        }
+                        outFile.setExecutable((entry.getMode() & 0100) != 0, false);
+                        outFile.setReadable((entry.getMode() & 0400) != 0, false);
+                        outFile.setWritable((entry.getMode() & 0200) != 0, false);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new ShellCommandErrorException("Failed to copy from container: " + containerId + " > " + fromPath +
+                    " to " + toPath, e);
+        }
     }
 
     /**
      * copy from local machine path to remote machine
      *
-     * @param user host's user
-     * @param password hosts's password
-     * @param host host name or IP
-     * @param fromPath remote path to copy from
-     * @param toPath local destination path
-     * @throws IOException
+     * @param containerId container id to run command in
+     * @param fromPath local path to copy from
+     * @param toPath remote destination path in the container
      * @throws ShellCommandErrorException
      */
-    public void copyToRemoteMachine(String user, String password, String host,
-                                    String fromPath, String toPath)
-            throws IOException, ShellCommandErrorException {
-        runCommand(getSshPass(password) + "scp -o StrictHostKeyChecking=no -r "
-                + fromPath.replace("$", "\\$") + " " + user + "@" + host + ":"
-                + toPath);
+    public void copyToRemoteMachine(String containerId, String fromPath, String toPath) throws ShellCommandErrorException {
+        File source = new File(fromPath);
+        if (!source.exists()) {
+            throw new ShellCommandErrorException("Source path does not exist: " + fromPath);
+        }
+
+        // Create a tar archive of the source file or directory
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             TarArchiveOutputStream tarOut = new TarArchiveOutputStream(byteOut)) {
+
+            addFileToTar(tarOut, source, source.getName());
+            tarOut.finish();
+
+            // Copy the tar archive to the container
+            try (InputStream tarInputStream = new ByteArrayInputStream(byteOut.toByteArray())) {
+                dockerClient.copyArchiveToContainerCmd(containerId)
+                        .withTarInputStream(tarInputStream)
+                        .withRemotePath(toPath)
+                        .exec();
+            }
+        } catch (Exception e) {
+            throw new ShellCommandErrorException("Failed to copy to container: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Helper method to add a file or directory recursively to a TarArchiveOutputStream.
+     */
+    private void addFileToTar(TarArchiveOutputStream tarOut, File file, String entryName) throws IOException {
+        TarArchiveEntry entry = new TarArchiveEntry(file, entryName);
+        tarOut.putArchiveEntry(entry);
+
+        if (file.isFile()) {
+            try (FileInputStream in = new FileInputStream(file)) {
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = in.read(buffer)) != -1) {
+                    tarOut.write(buffer, 0, len);
+                }
+            }
+            tarOut.closeArchiveEntry();
+        } else if (file.isDirectory()) {
+            tarOut.closeArchiveEntry();
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    addFileToTar(tarOut, child, entryName + "/" + child.getName());
+                }
+            }
+        }
     }
 
     /**
      * Copy to List of remote machines with same credentials
      *
-     * @param user machines user name
-     * @param password machines password
+     * @param containerIds container id to run command in
      * @param filePath to copy
      * @param target in remote machines
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void copyToRemoteMachines(String user, String password,
-                                     List<String> machines, String filePath,
+    public void copyToRemoteMachines(List<String> containerIds, String filePath,
                                      String target) throws IOException,
             ShellCommandErrorException {
-        for (String node : machines) {
-            copyToRemoteMachine(user, password, node, filePath, target);
+        for (String containerId : containerIds) {
+            copyToRemoteMachine(containerId, filePath, target);
         }
     }
 
     /**
      * Run command on remote node
      *
-     * @param user machine's username
-     * @param password machine's password
-     * @param host machine's host
+     * @param containerId container id to run command in
      * @param command command to execute
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void runRemoteCommand(String user, String password, String host,
-                                 String command) throws IOException,
+    @Deprecated
+    public void runRemoteCommand(String containerId, String command) throws IOException,
             ShellCommandErrorException {
-        runCommand(getSshPass(password) + "ssh -o StrictHostKeyChecking=no "
-                + user + "@" + host + " -t \"" + command + "\"");
+        runCommand(containerId, command);
     }
 
     /**
      * Delete file from remote machine using machien's credentials.
      *
-     * @param user machine's username
-     * @param password machine's password
-     * @param host machine's host
+     * @param containerId container id to run command in
      * @param filePath of file to delete
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public void deleteFileFromRemoteMachine(String user, String password,
-                                            String host, String filePath,
+    public void deleteFileFromRemoteMachine(String containerId, String filePath,
                                             boolean sudo) throws IOException,
             ShellCommandErrorException {
         String deleteCmd = "rm -rf " + filePath;
         if (sudo) {
             deleteCmd = "sudo -s " + deleteCmd;
         }
-        runRemoteCommand(user, password, host, deleteCmd);
+        runRemoteCommand(containerId, deleteCmd);
     }
 
     /**
@@ -494,29 +661,16 @@ public class ShellSystemObject extends BaseSystemObject {
      * @throws IOException
      * @throws ShellCommandErrorException
      */
-    public boolean checkFileExists(String path, String fileName)
+    public boolean checkFileExists(String containerId, String path, String fileName)
             throws IOException, ShellCommandErrorException {
-        // empty command to clean result buffer
-        runCommand(" ");
         // may get error on this command
-        runCommand("ls " + path + "/" + fileName, EXIT_CODE_NOT_EXISTS);
+        runCommand(containerId, "ls " + path + "/" + fileName, EXIT_CODE_NOT_EXISTS);
         // parse the result
         String result = getLastCmdResult().split("\r\n")[1];
         // if equals return true
         return (result.trim().equals(path + "/" + fileName));
     }
 
-    /**
-     * @return which user is logged in at this moment
-     * @throws IOException
-     * @throws ShellCommandErrorException
-     */
-    public String getLoggedUser() throws IOException,
-            ShellCommandErrorException {
-        runCommand("whoami");
-        // parse user from returned result
-        return getLastCmdResult().split("\r\n")[1].trim();
-    }
 
     public String getLastCmdResult() {
         return lastCmdResult;
@@ -588,5 +742,14 @@ public class ShellSystemObject extends BaseSystemObject {
 
     public void setHostName(String hostName) {
         this.hostName = hostName;
+    }
+
+    @Nullable
+    public String getContainerId() {
+        return containerId;
+    }
+
+    public void setContainerId(@Nullable String containerId) {
+        this.containerId = containerId;
     }
 }

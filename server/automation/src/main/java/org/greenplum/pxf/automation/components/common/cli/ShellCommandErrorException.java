@@ -10,4 +10,8 @@ public class ShellCommandErrorException extends Exception {
 	public ShellCommandErrorException(String message) {
 		super(message);
 	}
+
+	public ShellCommandErrorException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

@@ -102,7 +102,8 @@ public abstract class BaseTestParent {
                 gpdb.createDataBase(userName, false);
             }
 
-            initializeWorkingDirectory(hdfs, gpdb.getUserName());
+            // FIXME: ???
+//            initializeWorkingDirectory(hdfs, gpdb.getUserName());
 
             if (hdfsNonSecure != null) {
                 initializeWorkingDirectory(hdfsNonSecure, gpdb.getUserName());

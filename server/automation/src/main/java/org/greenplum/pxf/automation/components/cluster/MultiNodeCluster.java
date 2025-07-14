@@ -15,6 +15,7 @@ import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.automation.components.cluster.installer.nodes.CoordinatorNode;
 import org.greenplum.pxf.automation.components.cluster.installer.nodes.Node;
 import org.greenplum.pxf.automation.components.cluster.installer.nodes.SegmentNode;
+import org.greenplum.pxf.automation.components.common.DockerContainers;
 import org.greenplum.pxf.automation.components.common.cli.ParallelShellActions;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 
@@ -146,7 +147,7 @@ public class MultiNodeCluster extends PhdCluster {
         ReportUtils.startLevel(report, getClass(), "Fetch Configuration from Cluster to " + targetDirectory);
         // clean confDirectory in remote admin node before fetch into it
         String tempClusterConfDirectory = getTempClusterConfDirectory();
-        deleteDirectory(tempClusterConfDirectory);
+        deleteDirectory(DockerContainers.GPDB_PXF.getContainerName(), tempClusterConfDirectory);
         // currently copy only the pxf-conf to tempClusterConfDirectory
         FileUtils.copyDirectory(new File(getPxfConfLocation()), new File(tempClusterConfDirectory + "/" + getPathToPxfConfInGeneralConf()));
         // if current node is not pxf node, it requires copying pxf/conf directory from the pxf node
@@ -159,7 +160,8 @@ public class MultiNodeCluster extends PhdCluster {
                 FileUtils.deleteDirectory(pathToLocalPxfConfigDir);
             }
             pathToLocalPxfConfigDir.getParentFile().mkdirs();
-            copyFromRemoteMachine(pxfNode.getUserName(), pxfNode.getPassword(), pxfNode.getHost(), getPxfConfLocation(), pathToLocalPxfConfigDir.getParentFile().getAbsolutePath());
+            // FIXME: multinode cluster
+            copyFromRemoteMachine(DockerContainers.GPDB_PXF.getContainerName(), getPxfConfLocation(), pathToLocalPxfConfigDir.getParentFile().getAbsolutePath());
         }
         ReportUtils.stopLevel(report);
     }
@@ -203,7 +205,8 @@ public class MultiNodeCluster extends PhdCluster {
         ReportUtils.startLevel(report, getClass(), "Delete File: " + targetFile + " from nodes");
         String escapedTargetFile = escapeSpaces(targetFile);
         for (Node pxfNode : nodes) {
-            deleteFileFromRemoteMachine(pxfNode.getUserName(), pxfNode.getPassword(), pxfNode.getHost(), escapedTargetFile, sudo);
+            // FIXME: multinode cluster
+            deleteFileFromRemoteMachine(DockerContainers.GPDB_PXF.getContainerName(), escapedTargetFile, sudo);
         }
         ReportUtils.stopLevel(report);
     }

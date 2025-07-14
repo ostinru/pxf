@@ -3,6 +3,7 @@ package org.greenplum.pxf.automation.components.gpdb;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.automation.components.common.DbSystemObject;
+import org.greenplum.pxf.automation.components.common.DockerContainers;
 import org.greenplum.pxf.automation.components.common.ShellSystemObject;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.structures.tables.pxf.ExternalTable;
@@ -24,7 +25,7 @@ public class Gpdb extends DbSystemObject {
 	private static final String DEFAULT_PORT = "5432";
 	// TODO: This should detect the correct prefix instead of hardcoding it
 	// private static final String GREENPLUM_DATABASE_PREFIX = "Apache Cloudberry "; // for main
-	private static final String GREENPLUM_DATABASE_PREFIX = "Cloudberry Database "; // for 1.6.0
+	private static final String GREENPLUM_DATABASE_PREFIX = "Greenplum Database "; // for 1.6.0
 	private static final String IF_NOT_EXISTS_OPTION = "IF NOT EXISTS";
 
 	private String sshUserName;
@@ -325,9 +326,9 @@ public class Gpdb extends DbSystemObject {
 
 		sso.init();
 
-		sso.runCommand("source $GPHOME/greenplum_path.sh");
+		sso.runCommand(DockerContainers.GPDB_PXF.getContainerName(), "source $GPHOME/greenplum_path.sh");
 		// psql do not return error code so use EXIT_CODE_NOT_EXISTS
-		sso.runCommand("psql " + getDb(), ShellSystemObject.EXIT_CODE_NOT_EXISTS);
+		sso.runCommand(DockerContainers.GPDB_PXF.getContainerName(),"psql " + getDb(), ShellSystemObject.EXIT_CODE_NOT_EXISTS);
 
 		return sso;
 	}
@@ -359,7 +360,7 @@ public class Gpdb extends DbSystemObject {
 			return null;
 		ReportUtils.report(report, getClass(), "running sql command " + sql);
 		// sql commands do not return error code so using EXIT_CODE_NOT_EXISTS
-		sso.runCommand(sql, ShellSystemObject.EXIT_CODE_NOT_EXISTS);
+		sso.runCommand(DockerContainers.GPDB_PXF.getContainerName(), sql, ShellSystemObject.EXIT_CODE_NOT_EXISTS);
 
 		String lastCmd = sso.getLastCmdResult();
 		ReportUtils.report(report, getClass(), "sql command status: " + lastCmd);
@@ -447,8 +448,8 @@ public class Gpdb extends DbSystemObject {
 		remoteConn.init();
 		String user = sshUserName == null ? System.getProperty("gpdbUser", System.getenv("USER")) : sshUserName;
 		// first create the directory then ship the files over
-		remoteConn.runRemoteCommand(user, sshPassword, masterHost, "mkdir -p " + from.replaceFirst("(/[^/]*/?)'$", "'"));
-		remoteConn.copyToRemoteMachine(user, sshPassword, masterHost, from, from);
+		remoteConn.runRemoteCommand(DockerContainers.GPDB_PXF.getContainerName(), "mkdir -p " + from.replaceFirst("(/[^/]*/?)'$", "'"));
+		remoteConn.copyToRemoteMachine(DockerContainers.GPDB_PXF.getContainerName(), from, from);
 	}
 
 	/**

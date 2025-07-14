@@ -25,6 +25,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.greenplum.pxf.automation.components.common.BaseSystemObject;
+import org.greenplum.pxf.automation.components.common.DockerContainers;
 import org.greenplum.pxf.automation.components.common.ShellSystemObject;
 import org.greenplum.pxf.automation.fileformats.IAvroSchema;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
@@ -121,48 +122,48 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         config = new Configuration();
 
         // if hadoop root exists in the SUT file, load configuration from it
-        if (StringUtils.isNotEmpty(hadoopRoot)) {
+//        if (StringUtils.isNotEmpty(hadoopRoot)) {
 
             hadoopRoot = replaceUser(hadoopRoot);
             ReportUtils.startLevel(report, getClass(), "Using root directory: " + hadoopRoot);
 
             ProtocolEnum protocol = ProtocolUtils.getProtocol();
             if (protocol == ProtocolEnum.HDFS) {
-                config.addResource(new Path(getHadoopRoot() + "/conf/core-site.xml"));
-                config.addResource(new Path(getHadoopRoot() + "/conf/hdfs-site.xml"));
-                config.addResource(new Path(getHadoopRoot() + "/conf/mapred-site.xml"));
+                config.addResource(new Path( "/Users/ostinru/development/pxf/server/automation/docker/hadoop-config/conf/core-site.xml"));
+                config.addResource(new Path( "/Users/ostinru/development/pxf/server/automation/docker/hadoop-config/conf/hdfs-site.xml"));
+                config.addResource(new Path("/Users/ostinru/development/pxf/server/automation/docker/hadoop-config/conf/mapred-site.xml"));
             } else {
                 // (i.e) For s3 protocol the file should be s3-site.xml
                 config.addResource(new Path(getHadoopRoot() + "/" + protocol.value() + "-site.xml"));
                 config.addResource(new Path(getHadoopRoot() + "/mapred-site.xml"));
                 config.set("fs.defaultFS", getScheme() + "://" + getWorkingDirectory());
             }
-        } else {
-
-            if (StringUtils.isEmpty(host)) {
-                throw new Exception("host in hdfs component not configured in SUT");
-            }
-
-            if (StringUtils.isNotEmpty(haNameservice)) {
-                if (StringUtils.isEmpty(hostStandby)) {
-                    throw new Exception(
-                            "hostStandby in hdfs component not configured in SUT");
-                }
-                config.set("fs.defaultFS", "hdfs://" + haNameservice + "/");
-                config.set("dfs.client.failover.proxy.provider.mycluster",
-                        "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider");
-                config.set("dfs.nameservices", haNameservice);
-                config.set("dfs.ha.namenodes" + "." + haNameservice, "nn1,nn2");
-                config.set(
-                        "dfs.namenode.rpc-address." + haNameservice + ".nn1",
-                        host + ":" + port);
-                config.set(
-                        "dfs.namenode.rpc-address." + haNameservice + ".nn2",
-                        hostStandby + ":" + port);
-            } else {
-                config.set("fs.defaultFS", "hdfs://" + host + ":" + port + "/");
-            }
-        }
+//        } else {
+//
+//            if (StringUtils.isEmpty(host)) {
+//                throw new Exception("host in hdfs component not configured in SUT");
+//            }
+//
+//            if (StringUtils.isNotEmpty(haNameservice)) {
+//                if (StringUtils.isEmpty(hostStandby)) {
+//                    throw new Exception(
+//                            "hostStandby in hdfs component not configured in SUT");
+//                }
+//                config.set("fs.defaultFS", "hdfs://" + haNameservice + "/");
+//                config.set("dfs.client.failover.proxy.provider.mycluster",
+//                        "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider");
+//                config.set("dfs.nameservices", haNameservice);
+//                config.set("dfs.ha.namenodes" + "." + haNameservice, "nn1,nn2");
+//                config.set(
+//                        "dfs.namenode.rpc-address." + haNameservice + ".nn1",
+//                        host + ":" + port);
+//                config.set(
+//                        "dfs.namenode.rpc-address." + haNameservice + ".nn2",
+//                        hostStandby + ":" + port);
+//            } else {
+//                config.set("fs.defaultFS", "hdfs://" + host + ":" + port + "/");
+//            }
+//        }
 
         // for Hadoop clusters provisioned in the cloud when running from local workstation
         if (useDatanodeHostname != null && Boolean.parseBoolean(useDatanodeHostname)) {
@@ -195,7 +196,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
 
             // source environment file
-            namenodeSso.runCommand("source ~/.bash_profile");
+            namenodeSso.runCommand(DockerContainers.HADOOP_NAMENODE.getContainerName(), "source ~/.bash_profile");
             namenodePrincipal = config.get("dfs.namenode.kerberos.principal");
             namenodeKeytab = config.get("dfs.namenode.keytab.file");
             if (namenodePrincipal != null) {
@@ -206,7 +207,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                 // e.g. "kinit -kt /opt/security/keytab/hdfs.service.keytab hdfs/ccp-user-nn01.c.gcp-project.internal"
                 StringBuilder kinitCommand = new StringBuilder("kinit -kt ")
                         .append(namenodeKeytab).append(" ").append(namenodePrincipal);
-                namenodeSso.runCommand(kinitCommand.toString());
+                namenodeSso.runCommand(DockerContainers.HADOOP_NAMENODE.getContainerName(), kinitCommand.toString());
             }
         }
         ReportUtils.stopLevel(report);
@@ -214,12 +215,18 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     @Override
     public void setDefaultReplicationSize() {
-        setReplicationSize(fs.getDefaultReplication(new Path("/")));
+        // FIXME: (WAS): setReplicationSize(fs.getDefaultReplication(new Path("/")));
+        // Use default replication from configuration instead of calling unsupported method
+        short defaultReplication = (short) config.getInt("dfs.replication", 3);
+        setReplicationSize(defaultReplication);
     }
 
     @Override
     public void setDefaultBlockSize() {
-        setBlockSize(fs.getDefaultBlockSize(new Path("/")));
+        // FIXME: (WAS): setBlockSize(fs.getDefaultBlockSize(new Path("/")));
+        // Use default block size from configuration instead of calling unsupported method
+        long defaultBlockSize = config.getLong("dfs.blocksize", 134217728L); // 128MB default
+        setBlockSize(defaultBlockSize);
     }
 
     private void setDefaultBufferSize() {
@@ -609,7 +616,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         // to run manually:
         // source ~/.bash_profile && kinit -kt /opt/security/keytab/hdfs.service.keytab hdfs/ccp-user-nn01.c.gcp-project.internal && ./singlecluster-HDP/bin/hdfs haadmin -getServiceState nn01
         String statusCommand = "./singlecluster-HDP/bin/hdfs haadmin -getServiceState " + name;
-        namenodeSso.runCommand(statusCommand);
+        namenodeSso.runCommand(DockerContainers.HADOOP_NAMENODE.getContainerName(), statusCommand);
         String fullResponse = namenodeSso.getLastCmdResult();
         if (fullResponse.contains(String.format("haadmin -getServiceState %s\r\nactive\r\n", name))) {
             return "active";
@@ -627,7 +634,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         // source ~/.bash_profile && kinit -kt /opt/security/keytab/hdfs.service.keytab hdfs/ccp-user-nn01.c.gcp-project.internal && ./singlecluster-HDP/bin/hdfs haadmin -failover nn01 nn02"
         String failoverCommand = "./singlecluster-HDP/bin/hdfs haadmin -failover " + from + " " + to;
 
-        namenodeSso.runCommand(failoverCommand);
+        namenodeSso.runCommand(DockerContainers.HADOOP_NAMENODE.getContainerName(), failoverCommand);
         String fullResponse = namenodeSso.getLastCmdResult();
         if (!fullResponse.contains(String.format("Failover from %s to %s successful", from, to))) {
             throw new IllegalStateException("Failed to failover: " + fullResponse);

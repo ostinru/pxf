@@ -71,11 +71,13 @@ public class HBase extends BaseSystemObject implements IDbFunctionality {
         config = new Configuration();
 
         // if hbaseRoot root exists in the SUT file, load configuration from it
-        if (StringUtils.isNotEmpty(hbaseRoot)) {
-            config.addResource(new Path(getHbaseRoot() + "/conf/hbase-site.xml"));
-        } else {
-            config.set("hbase.rootdir", "hdfs://" + host + ":8020/hbase");
-        }
+//        if (StringUtils.isNotEmpty(hbaseRoot)) {
+            config.addResource(new Path("/Users/ostinru/development/pxf/server/automation/docker/hbase/configs/hbase-site.xml"));
+            config.set("hbase.zookeeper.quorum", "localhost");
+//            config.set("hbase.rootdir", "hdfs://localhost:8020/hbase");
+//        } else {
+//            config.set("hbase.rootdir", "hdfs://" + host + ":8020/hbase");
+//        }
 
         HBaseAdmin.checkHBaseAvailable(config);
         connection = ConnectionFactory.createConnection(config);

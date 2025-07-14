@@ -4,7 +4,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.automation.components.cluster.installer.nodes.Node;
 import org.greenplum.pxf.automation.components.common.cli.ShellCommandErrorException;
+import org.greenplum.pxf.automation.components.common.DockerContainers;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
+
+import com.github.dockerjava.api.DockerClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,18 +28,18 @@ public class SingleCluster extends PhdCluster {
 
     @Override
     public void init() throws Exception {
-        // if user not injected, get from "GPHD_ROOT" env var
-        if (StringUtils.isEmpty(getPhdRoot())) {
-            setPhdRoot(System.getenv("GPHD_ROOT"));
-        }
-        // if after setting var env, still no value, throw exception
-        if (StringUtils.isEmpty(getPhdRoot()) || getPhdRoot().equals("null")) {
-            throw new Exception(getClass().getSimpleName() + ": Illegal Cluster Folder: please define GPHD_ROOT");
-        }
+//        // if user not injected, get from "GPHD_ROOT" env var
+//        if (StringUtils.isEmpty(getPhdRoot())) {
+//            setPhdRoot(System.getenv("GPHD_ROOT"));
+//        }
+//        // if after setting var env, still no value, throw exception
+//        if (StringUtils.isEmpty(getPhdRoot()) || getPhdRoot().equals("null")) {
+//            throw new Exception(getClass().getSimpleName() + ": Illegal Cluster Folder: please define GPHD_ROOT");
+//        }
 
         super.init();
 
-        runCommand("cd " + getPhdRoot());
+//        runCommand(DockerContainers.GPDB_PXF.getContainerName(), "cd " + getPhdRoot());
 
         // set hive base hdfs directory for SC cluster
         if (StringUtils.isEmpty(getHiveBaseHdfsDirectory())) {
@@ -47,7 +50,7 @@ public class SingleCluster extends PhdCluster {
     @Override
     public void startHiveServer() throws Exception {
         ReportUtils.startLevel(report, getClass(), "Start Hive Server2");
-        runCommand(getPhdRoot() + "/bin/hive-service.sh hiveserver2 start");
+        runCommand(DockerContainers.GPDB_PXF.getContainerName(), getPhdRoot() + "/bin/hive-service.sh hiveserver2 start");
         ReportUtils.stopLevel(report);
     }
 
@@ -58,10 +61,10 @@ public class SingleCluster extends PhdCluster {
         // treat standalone PXF case separately
         if (service == EnumClusterServices.pxf && getPxfHome() != null) {
             String command = String.format("PXF_DEBUG=%s %s/bin/pxf restart", getPxfServerDebug(), getPxfHome());
-            runCommand(command);
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), command);
         } else {
             String serviceName = service.toString();
-            runCommand(getPhdRoot() + "/bin/start-" + serviceName + ".sh");
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), getPhdRoot() + "/bin/start-" + serviceName + ".sh");
         }
         // stabilization
         Thread.sleep(_2_SECONDS);
@@ -74,10 +77,10 @@ public class SingleCluster extends PhdCluster {
 
         // treat standalone PXF case separately
         if (service == EnumClusterServices.pxf && getPxfHome() != null) {
-            runCommand(getPxfHome() + "/bin/pxf stop");
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), getPxfHome() + "/bin/pxf stop");
         } else {
             String serviceName = service.toString();
-            runCommand(getPhdRoot() + "/bin/stop-" + serviceName + ".sh");
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), getPhdRoot() + "/bin/stop-" + serviceName + ".sh");
         }
         // stabilization
         Thread.sleep(_2_SECONDS);
@@ -98,10 +101,10 @@ public class SingleCluster extends PhdCluster {
         // treat standalone PXF case separately
         if (service == EnumClusterServices.pxf && getPxfHome() != null) {
             String command = String.format("PXF_BASE=%s PXF_DEBUG=%s %s/bin/pxf restart", getPxfBase(), getPxfServerDebug(), getPxfHome());
-            runCommand(command);
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), command);
         } else {
             String serviceName = service.toString();
-            runCommand(getPhdRoot() + "/bin/restart-" + serviceName + ".sh");
+            runCommand(DockerContainers.GPDB_PXF.getContainerName(), getPhdRoot() + "/bin/restart-" + serviceName + ".sh");
         }
         // stabilization
         Thread.sleep(_2_SECONDS);
@@ -182,7 +185,7 @@ public class SingleCluster extends PhdCluster {
     // TODO: remove method when using singlecluster script
     private HashMap<String, Integer> getProcessMap() throws IOException, ShellCommandErrorException {
         // run jps command
-        runCommand("jps");
+        jps(DockerContainers.GPDB_PXF.getContainerName());
         // get result from command
         String cmdResult = getLastCmdResult();
         // split according to line separator into String array
@@ -235,7 +238,7 @@ public class SingleCluster extends PhdCluster {
     @Override
     public void stopHiveServer() throws Exception {
         ReportUtils.startLevel(report, getClass(), "Stop Hive Server2");
-        runCommand(getPhdRoot() + "/bin/hive-service.sh hiveserver2 stop");
+        runCommand(DockerContainers.HADOOP_HIVE_SERVER.getContainerName(), getPhdRoot() + "/bin/hive-service.sh hiveserver2 stop");
         ReportUtils.stopLevel(report);
     }
 
@@ -246,7 +249,11 @@ public class SingleCluster extends PhdCluster {
     public void fetchConfiguration(String targetDirectory) throws Exception {
         ReportUtils.startLevel(report, getClass(), "Fetch Configuration from Cluster to " + targetDirectory);
         // currently copy only the pxf-conf content to the temp directory
-        FileUtils.copyDirectory(new File(getPxfConfLocation()), new File(getTempClusterConfDirectory()));
+        this.copyFromRemoteMachine(
+                DockerContainers.GPDB_PXF.getContainerName(),
+                getPxfConfLocation(),
+                getTempClusterConfDirectory()
+                );
         ReportUtils.stopLevel(report);
     }
 

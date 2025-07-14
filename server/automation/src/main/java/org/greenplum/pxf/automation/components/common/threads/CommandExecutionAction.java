@@ -22,7 +22,7 @@ public class CommandExecutionAction implements Callable<Integer> {
 	@Override
 	public Integer call() throws Exception {
 		try {
-			connection.runCommand(commandToExecute);
+			connection.runCommand(connection.getContainerId(), commandToExecute);
 			return 1;
 		} catch (IOException | ShellCommandErrorException e) {
 			return 0;

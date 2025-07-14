@@ -6,6 +6,8 @@ import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.StringJoiner;
 
 /**
@@ -21,8 +23,8 @@ public class Regress extends ShellSystemObject {
         ReportUtils.startLevel(report, getClass(), "init");
         regressRunner = new File("pxf_regress/pxf_regress").getAbsolutePath();
         super.init();
-        runCommand("source $GPHOME/greenplum_path.sh");
-        runCommand("cd " + new File(regressTestFolder).getAbsolutePath());
+//        runLocalCommand("source $GPHOME/greenplum_path.sh");
+//        runLocalCommand("cd " + new File(regressTestFolder).getAbsolutePath());
         ReportUtils.stopLevel(report);
     }
 
@@ -40,13 +42,15 @@ public class Regress extends ShellSystemObject {
         setCommandTimeout(_10_MINUTES);
         StringJoiner commandToRun = new StringJoiner(" ");
 
-        commandToRun.add("PGDATABASE=" + dbName);
+//        commandToRun.add("PGDATABASE=" + dbName);
+        Map<String, String> env = new HashMap<>();
+        env.put("PGDATABASE", dbName);
         commandToRun.add(regressRunner);
-        commandToRun.add(sqlTestPath);
+//        commandToRun.add(sqlTestPath);
 
         ReportUtils.report(report, getClass(), "running command \"" + commandToRun + "\"");
 
-        runCommand(commandToRun.toString());
+        runLocalCommand(commandToRun.toString(), env); // FIXME: local??
         ReportUtils.stopLevel(report);
     }
 

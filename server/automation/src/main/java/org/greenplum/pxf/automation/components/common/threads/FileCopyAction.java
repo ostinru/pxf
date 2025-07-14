@@ -23,18 +23,23 @@ public class FileCopyAction implements Callable<Integer> {
 
 	@Override
 	public Integer call() throws Exception {
-		ShellSystemObject connection = null;
-		try {
-			// create new connection for each thread so it will happen in parallel
-			connection = new ShellSystemObject(true);
-			connection.setHost(from.getHost());
-			connection.init();
-			connection.copyToRemoteMachine(to.getUserName(), to.getPassword(), to.getHost(), fromPath, toPath);
-			return 1;
-		} catch (Exception e) {
-			return 0;
-		} finally {
-			connection.close();
-		}
+		// FIXME: copy via localhost =/
+		throw new UnsupportedOperationException("not implemented yet");
+
+
+//		ShellSystemObject connection = null;
+//		try {
+//			// create new connection for each thread so it will happen in parallel
+//			connection = new ShellSystemObject(true);
+//			connection.setHost(from.getHost());
+//			connection.init();
+//			connection.copyToRemoteMachine(to.getUserName(), to.getPassword(), to.getHost(), fromPath, toPath);
+//			return 1;
+//		} catch (Exception e) {
+//			return 0;
+//		} finally {
+//			connection.close();
+//		}
+
 	}
 }
