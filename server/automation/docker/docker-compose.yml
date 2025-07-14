@@ -14,7 +14,7 @@ services:
       - ./hadoop-config:/opt/hadoop/etc/hadoop
     command: ["hdfs", "namenode"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      test: ["CMD", "curl", "-f", "http://namenode:9870"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -236,7 +236,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5888/actuator/health", "-H 'Accept: application/json'"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 10
 
 volumes:
   namenode:
