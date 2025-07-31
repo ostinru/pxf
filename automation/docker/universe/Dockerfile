@@ -50,8 +50,9 @@ RUN apt-get install -y maven unzip
 RUN usermod -a -G sudo gpadmin && \
   echo "gpadmin:cbdb@123" | chpasswd && \
   echo "gpadmin        ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers && \
-  echo "root           ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers \
+  echo "root           ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 
+# Base system setup complete, switch to gpadmin to set up everything else
 USER gpadmin
 
 # --------------------------------------------------------------------
