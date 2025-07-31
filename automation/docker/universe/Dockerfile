@@ -42,7 +42,16 @@ RUN wget -O - "https://go.dev/dl/go1.24.5.linux-amd64.tar.gz" | tar -C /usr/loca
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 # automation uses maven and different tools
-RUN apt-get install -y maven unzip
+RUN apt-get install -y maven unzip openssh-server
+
+# configure ssh as described in automation/README.md
+RUN ssh-keygen -A && \
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
+    mkdir -p /etc/ssh/sshd_config.d && \
+    touch /etc/ssh/sshd_config.d/pxf-automation.conf && \
+    echo "KexAlgorithms +diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1" >> /etc/ssh/sshd_config.d/pxf-automation.conf && \
+    echo "HostKeyAlgorithms +ssh-rsa,ssh-dss" >> /etc/ssh/sshd_config.d/pxf-automation.conf && \
+    echo "PubkeyAcceptedAlgorithms +ssh-rsa,ssh-dss" >> /etc/ssh/sshd_config.d/pxf-automation.conf
 
 # --------------------------------------------------------------------
 # Add gpadmin to sudoers and run preparation scripts as gpadmin
@@ -54,6 +63,19 @@ RUN usermod -a -G sudo gpadmin && \
 
 # Base system setup complete, switch to gpadmin to set up everything else
 USER gpadmin
+
+# ----------------------------------------------------------------------
+# Configure passwordless SSH access for 'gpadmin' user
+# ----------------------------------------------------------------------
+# The script sets up SSH key-based authentication for the 'gpadmin' user,
+# allowing passwordless SSH access. It generates a new SSH key pair if one
+# does not already exist, and configures the necessary permissions.
+# ----------------------------------------------------------------------
+RUN \
+  mkdir /home/gpadmin/.ssh && chown -R gpadmin:gpadmin /home/gpadmin/.ssh && \
+  ssh-keygen -t rsa -b 4096 -m PEM -C gpadmin -f /home/gpadmin/.ssh/id_rsa -P "" && \
+  cat /home/gpadmin/.ssh/id_rsa.pub >> /home/gpadmin/.ssh/authorized_keys && \
+  chmod 0600 /home/gpadmin/.ssh/authorized_keys
 
 # --------------------------------------------------------------------
 # Setup the Hadoop singlecluster
@@ -81,6 +103,8 @@ RUN cp ${PXF_HOME}/templates/hbase-site.xml \
     ${PXF_HOME}/templates/jdbc-site.xml \
     ${PXF_BASE}/servers/default/
 
+EXPOSE 5432 22
+
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sudo chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
