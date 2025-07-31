@@ -55,6 +55,17 @@ RUN usermod -a -G sudo gpadmin && \
 USER gpadmin
 
 # --------------------------------------------------------------------
+# Setup the Hadoop singlecluster
+# --------------------------------------------------------------------
+# Setup the Hadoop singlecluster
+ENV GPHD_ROOT=/home/gpadmin/workspace/singlecluster
+ENV HADOOP_ROOT=$GPHD_ROOT/hadoop
+ENV HBASE_ROOT=$GPHD_ROOT/hbase
+ENV HIVE_ROOT=$GPHD_ROOT/hive
+ENV ZOOKEEPER_ROOT=$GPHD_ROOT/zookeeper
+ENV PATH=$PATH:$GPHD_ROOT/bin:$HADOOP_ROOT/bin:$HBASE_ROOT/bin:$HIVE_ROOT/bin:$ZOOKEEPER_ROOT/bin
+
+# --------------------------------------------------------------------
 # Run tests
 # --------------------------------------------------------------------
 ENV PXF_HOME=/opt/greenplum-pxf-6/
