@@ -6,6 +6,9 @@ services:
       dockerfile: Dockerfile
     container_name: universe
     hostname: mdw
+    ports:
+      - "5432:5432"   # GPDB
+      - "5888:5888"   # PXF
     volumes:
       - ..:/home/gpadmin/workspace/pxf
     healthcheck:

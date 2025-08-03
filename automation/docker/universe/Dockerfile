@@ -23,6 +23,9 @@ ENV LC_ALL en_US.UTF-8
 COPY debs/greenplum-db-6_6.0.0-bionic-dev_amd64.deb /tmp/
 RUN apt-get install -y /tmp/greenplum-db-6_6.0.0-bionic-dev_amd64.deb && \
     rm /tmp/greenplum-db-6_6.0.0-bionic-dev_amd64.deb
+
+COPY gpinitsystem_singlenode /tmp/
+
 # Install PXF
 COPY debs/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb /tmp/
 RUN apt-get install -y /tmp/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb && \
@@ -91,17 +94,9 @@ ENV PATH=$PATH:$GPHD_ROOT/bin:$HADOOP_ROOT/bin:$HBASE_ROOT/bin:$HIVE_ROOT/bin:$Z
 # --------------------------------------------------------------------
 # Run tests
 # --------------------------------------------------------------------
+ENV GPHOME=/opt/greenplum-db-6/
 ENV PXF_HOME=/opt/greenplum-pxf-6/
 ENV PXF_BASE=/home/gpadmin/pxf
-RUN mkdir -p ${PXF_BASE}/servers/default/
-RUN cp ${PXF_HOME}/templates/hbase-site.xml \
-    ${PXF_HOME}/templates/hdfs-site.xml \
-    ${PXF_HOME}/templates/hive-site.xml \
-    ${PXF_HOME}/templates/core-site.xml \
-    ${PXF_HOME}/templates/mapred-site.xml \
-    ${PXF_HOME}/templates/pxf-site.xml \
-    ${PXF_HOME}/templates/jdbc-site.xml \
-    ${PXF_BASE}/servers/default/
 
 EXPOSE 5432 22
 
