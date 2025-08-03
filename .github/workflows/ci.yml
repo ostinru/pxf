@@ -138,8 +138,7 @@ jobs:
         with:
           name: automation-test-results-${{ matrix.target.pxf }}
           path: |
-            /automation/automation_logs
-            /automation/target/surefire-reports
+            /home/gpadmin/workspace/pxf/automation/target/surefire-reports
           retention-days: 30
 
         # TODO: add /regression and /automation tests here
