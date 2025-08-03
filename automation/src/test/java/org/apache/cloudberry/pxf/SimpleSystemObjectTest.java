@@ -181,7 +181,6 @@ public class SimpleSystemObjectTest {
             Pxf pxfSystem = (Pxf) systemManager.getSystemObject("pxf");
             System.out.println("✓ PXF system object initialized successfully");
             System.out.println("  Class: " + pxfSystem.getClass().getName());
-            System.out.println("  protocol version: " + pxfSystem.getProtocolVersion());
         } catch (Exception e) {
             System.out.println("✗ PXF system object initialization failed: " + e.getMessage());
             throw e;
