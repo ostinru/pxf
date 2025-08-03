@@ -1,3 +1,0 @@
-module regress
-
-go 1.21.3

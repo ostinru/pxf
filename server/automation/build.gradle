@@ -1,0 +1,160 @@
+// Custom settings for automation module
+// This module uses common settings from parent build.gradle
+
+ext {
+    avroVersion = '1.7.7'
+    jsystemVersion = '6.1.06'
+    dockerJavaVersion = '3.5.3'
+    powermockVersion = '1.6.4'
+    jacksonCoreVersion = '2.12.6'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://maven.top-q.co.il/content/repositories/public/'
+    }
+    maven {
+        url 'https://repo1.maven.org/maven2/'
+    }
+    maven {
+        url 'https://repository.apache.org/snapshots/'
+    }
+    maven {
+        // some old dependencies for hive
+        url "https://repo.huaweicloud.com/repository/maven/huaweicloudsdk/"
+    }
+}
+
+dependencies {
+    implementation project(':pxf-api')
+    implementation project(':pxf-hbase')
+    implementation project(':pxf-hdfs')
+    implementation project(':pxf-hive')
+    // pxf-extras.jar ???
+
+    // Only dependencies from pom.xml below
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.4'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'junit:junit:4.13.1'
+    implementation 'org.powermock:powermock-module-testng:1.6.4'
+    implementation 'org.powermock:powermock-api-mockito:1.6.4'
+    implementation 'org.testng:testng:6.8.7'
+    implementation ("org.jsystemtest:jsystemCore:$jsystemVersion") {
+        // javax.comm provides applications access to RS-232 hardware - not needed
+        exclude group: 'javax.comm', module: 'comm'
+    }
+    implementation ("org.jsystemtest.systemobjects:cli:$jsystemVersion") {
+        // javax.comm provides applications access to RS-232 hardware - not needed
+        exclude group: 'javax.comm', module: 'comm'
+    }
+    implementation 'org.mockito:mockito-core:1.10.19'
+    implementation 'ch.ethz.ganymed:ganymed-ssh2:261'
+    implementation 'org.postgresql:postgresql:42.7.2'
+    implementation 'org.springframework:spring:2.5.6'
+    implementation 'org.springframework:spring-web:5.3.33'
+    implementation 'net.sf.opencsv:opencsv:2.3'
+    implementation 'ant:ant-junit:1.6.5'
+    implementation 'org.apache.ant:ant:1.10.11'
+    implementation 'org.awaitility:awaitility:4.2.0'
+    //  AWS Dependencies
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.261'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.12.6'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.12.6'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.14'
+    // Google Dependencies
+    implementation('com.google.cloud.bigdataoss:gcs-connector:hadoop2-1.9.17:shaded') {
+        // The block below excludes all transitive dependencies for the gcs-connector jar
+        exclude group: '*', module: '*'
+    }
+    // Azure Dependencies
+    implementation 'com.microsoft.azure:azure-data-lake-store-sdk:2.2.3'
+    implementation 'com.microsoft.azure:azure-storage:5.5.0'
+    // HADOOP Dependencies
+    implementation "org.apache.hadoop:hadoop-common:$hadoopVersion"
+    implementation ("org.apache.hadoop:hadoop-aws:$hadoopVersion") {
+        exclude group: 'com.amazonaws', module: 'aws-java-sdk-s3'
+    }
+    implementation "org.apache.hadoop:hadoop-azure:$hadoopVersion"
+    implementation "org.apache.hadoop:hadoop-azure-datalake:$hadoopVersion"
+    implementation "org.apache.hadoop:hadoop-auth:$hadoopVersion"
+    implementation "org.apache.hadoop:hadoop-mapreduce-client-core:$hadoopVersion"
+    implementation "org.apache.hadoop:hadoop-annotations:$hadoopVersion"
+    implementation "org.apache.hadoop:hadoop-hdfs:$hadoopVersion"
+    implementation 'org.apache.avro:avro-tools:1.7.7'
+    implementation "org.apache.hbase:hbase-common:$hbaseVersion"
+    implementation "org.apache.hbase:hbase-protocol:$hbaseVersion"
+    implementation "org.apache.hbase:hbase-client:$hbaseVersion"
+    implementation "org.apache.hbase:hbase-thrift:$hbaseVersion"
+    implementation "org.apache.hbase:hbase-server:$hbaseVersion"
+//    implementation('org.apache.hive:hive-exec:1.1.0') {
+//        exclude group: 'org.apache.calcite', module: 'calcite-core'
+//        exclude group: 'org.apache.calcite', module: 'calcite-avatica'
+//        exclude group: 'org.apache.calcite', module: 'calcite-linq4j'
+//    }
+//    implementation('org.apache.hive:hive-service:1.1.0') {
+//        exclude group: 'org.apache.calcite', module: 'calcite-core'
+//        exclude group: 'org.apache.calcite', module: 'calcite-avatica'
+//        exclude group: 'org.apache.calcite', module: 'calcite-linq4j'
+//    }
+    implementation "org.apache.hive:hive-metastore:$hiveVersion"
+    implementation "org.apache.hive:hive-common:$hiveVersion"
+    implementation "org.apache.hive:hive-serde:$hiveVersion"
+    implementation "org.apache.hive:hive-jdbc:$hiveVersion"
+    implementation 'org.apache.orc:orc-core:1.6.13'
+    implementation 'org.mockito:mockito-all:1.9.5'
+    implementation 'org.buildobjects:jproc:2.8.2'
+
+    // experimental dependencies
+    implementation "com.github.docker-java:docker-java:$dockerJavaVersion"
+    implementation "com.github.docker-java:docker-java-transport-zerodep:$dockerJavaVersion"
+
+}
+
+// Test settings for automation module
+test {
+    useTestNG()
+    
+    environment "user", "gpadmin"
+    environment "user.name", "gpadmin"
+    environment "PGUSER", "gpadmin"
+    environment "PGPORT", "5432"
+    environment "JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64"
+    environment "PXF_HOME", "/opt/greenplum-pxf-6/"
+    environment "PXF_BASE", "/home/gpadmin/pxf"
+    
+    // JSystem properties
+    systemProperty 'jsystem.properties', file('jsystem.properties').absolutePath
+    systemProperty 'automation.logs', file('automation_logs').absolutePath
+    // Run all tests, even if some fail
+    ignoreFailures = true
+}
+
+// Copy test resources for JSystem
+processResources {
+    from('src/test/resources') {
+        include '**/*.*'
+    }
+}
+
+// Copy SUT files to build/classes/java/test for JSystem compatibility
+task copySutFiles(type: Copy) {
+    from('src/test/resources/sut') {
+        include '*.xml'
+    }
+    into 'build/classes/java/test/sut'
+}
+
+// Make sure SUT files are copied before tests run
+test.dependsOn copySutFiles
+
+// Create log directories
+task createLogDirectories {
+    doLast {
+        mkdir 'automation_logs'
+        mkdir 'log'
+    }
+}
+
+test.dependsOn createLogDirectories 
