@@ -43,7 +43,7 @@ RUN cp -r /pxf_src/devops/packaging/deb/cbdb_jammy/debian /gpdb_src/
 
 WORKDIR /gpdb_src
 ENV BUILD_DESTINATION=/gpdb_src/debian/build
-RUN ./configure --without-perl --without-python --with-libxml --with-gssapi --disable-orca --prefix=${BUILD_DESTINATION} \
+RUN ./configure --without-perl --without-python --with-libxml --with-gssapi --enable-orca --prefix=${BUILD_DESTINATION} \
  && make -j$(nproc) > /dev/null
 
 ENV GPDB_PKG_VERSION="1.0.0-dev"

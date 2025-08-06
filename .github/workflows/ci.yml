@@ -139,6 +139,81 @@ jobs:
           name: automation-test-results-${{ matrix.target.pxf }}
           path: |
             /home/gpadmin/workspace/pxf/automation/target/surefire-reports
+            /home/gpadmin/workspace/pxf/automation/automation_logs
           retention-days: 30
+
+      - name: Process TestNG reports
+        if: success() || failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const core = require('@actions/core');
+            
+            const targetPlatform = '${{ matrix.target.pxf }}';
+            const testReportsDir = '/home/gpadmin/workspace/pxf/automation/target/surefire-reports';
+            
+            console.log(`Processing test reports for ${targetPlatform}...`);
+            
+            // Start building the step summary
+            const summary = core.summary
+              .addHeading(`Test Results Summary for ${targetPlatform}`)
+              .addHeading('📦 Artifacts', 3)
+              .addRaw(`- [Raw Test Results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts) - automation-test-results-${targetPlatform}\n\n`);
+            
+            // Check if test reports exist
+            if (!fs.existsSync(testReportsDir)) {
+              console.log(`No test reports found for ${targetPlatform}`);
+              summary.addRaw('No test reports available\n\n');
+              summary.write();
+              return;
+            }
+            
+            // Process TestNG XML results
+            const testngResultsPath = path.join(testReportsDir, 'testng-results.xml');
+            if (!fs.existsSync(testngResultsPath)) {
+              console.log('No testng-results.xml found');
+              summary.addRaw('No TestNG results file found\n\n');
+              summary.write();
+              return;
+            }
+            
+            try {
+              const xmlContent = fs.readFileSync(testngResultsPath, 'utf8');
+              
+              // Extract test statistics using regex
+              const totalMatch = xmlContent.match(/total="(\d+)"/);
+              const passedMatch = xmlContent.match(/passed="(\d+)"/);
+              const failedMatch = xmlContent.match(/failed="(\d+)"/);
+              const skippedMatch = xmlContent.match(/skipped="(\d+)"/);
+              
+              const total = totalMatch ? totalMatch[1] : '0';
+              const passed = passedMatch ? passedMatch[1] : '0';
+              const failed = failedMatch ? failedMatch[1] : '0';
+              const skipped = skippedMatch ? skippedMatch[1] : '0';
+              
+              // Add test statistics to summary
+              summary
+                .addRaw('```\n')
+                .addRaw(`Test Results for ${targetPlatform}:\n`)
+                .addRaw(`Total: ${total}\n`)
+                .addRaw(`Passed: ${passed}\n`)
+                .addRaw(`Failed: ${failed}\n`)
+                .addRaw(`Skipped: ${skipped}\n`)
+                .addRaw('```\n\n');
+            } catch (error) {
+              console.log('Error processing TestNG results:', error.message);
+              summary.addRaw('Error processing test results\n\n');
+            }
+            
+            // Check if HTML report exists and add link
+            const htmlReportPath = path.join(testReportsDir, 'index.html');
+            if (fs.existsSync(htmlReportPath)) {
+              summary.addRaw(`📊 [View Detailed Test Report](${htmlReportPath})\n\n`);
+            }
+            
+            // Write to step summary
+            summary.write();
 
         # TODO: add /regression and /automation tests here
