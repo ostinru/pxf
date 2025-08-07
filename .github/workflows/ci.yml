@@ -149,7 +149,6 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const core = require('@actions/core');
             
             const targetPlatform = '${{ matrix.target.pxf }}';
             const testReportsDir = '/home/gpadmin/workspace/pxf/automation/target/surefire-reports';
@@ -164,7 +163,7 @@ jobs:
             
             // Check if test reports exist
             if (!fs.existsSync(testReportsDir)) {
-              console.log(`No test reports found for ${targetPlatform}`);
+              core.setFailed(`No test reports found for ${targetPlatform}`);
               summary.addRaw('No test reports available\n\n');
               summary.write();
               return;
@@ -173,7 +172,7 @@ jobs:
             // Process TestNG XML results
             const testngResultsPath = path.join(testReportsDir, 'testng-results.xml');
             if (!fs.existsSync(testngResultsPath)) {
-              console.log('No testng-results.xml found');
+              core.setFailed('No testng-results.xml found');
               summary.addRaw('No TestNG results file found\n\n');
               summary.write();
               return;
@@ -202,9 +201,19 @@ jobs:
                 .addRaw(`Failed: ${failed}\n`)
                 .addRaw(`Skipped: ${skipped}\n`)
                 .addRaw('```\n\n');
+              
+              // Fail step if there are failed or skipped tests
+              const failedCount = parseInt(failed) || 0;
+              const skippedCount = parseInt(skipped) || 0;
+              
+              if (failedCount > 0) {
+                core.setFailed(`Test execution failed: ${failedCount} test(s) failed`);
+              } else if (skippedCount > 0) {
+                core.setFailed(`Test execution incomplete: ${skippedCount} test(s) skipped`);
+              }
             } catch (error) {
               console.log('Error processing TestNG results:', error.message);
-              summary.addRaw('Error processing test results\n\n');
+              core.setFailed('Error processing test results\n\n');
             }
             
             // Check if HTML report exists and add link
