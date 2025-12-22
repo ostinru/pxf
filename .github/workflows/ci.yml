@@ -169,13 +169,13 @@ jobs:
           SKIPPED=0
           
           # Copy test artifacts
-          cp -r cloudberry-pxf/automation/test_artifacts/* artifacts/ 2>/dev/null || true
-          docker exec pxf-cbdb-dev bash -c "cp -r /usr/local/pxf/logs/* /tmp/pxf-logs/ 2>/dev/null || true" || true
-          docker cp pxf-cbdb-dev:/tmp/pxf-logs artifacts/logs/ 2>/dev/null || true
+          cp -r automation/test_artifacts/* artifacts/ 2>/dev/null || true
+          docker exec universe bash -c "cp -r /opt/greenplum-pxf-6/logs/* /tmp/pxf-logs/ 2>/dev/null || true" || true
+          docker cp universe:/tmp/pxf-logs artifacts/logs/ 2>/dev/null || true
           
           # Parse surefire reports for automation tests
           if [[ "$TEST_GROUP" != "cli" && "$TEST_GROUP" != "server" ]]; then
-            for xml in cloudberry-pxf/automation/target/surefire-reports/TEST-*.xml; do
+            for xml in pxf/automation/target/surefire-reports/TEST-*.xml; do
               if [ -f "$xml" ]; then
                 tests=$(grep -oP 'tests="\K\d+' "$xml" 2>/dev/null | head -1 || echo "0")
                 failures=$(grep -oP 'failures="\K\d+' "$xml" 2>/dev/null | head -1 || echo "0")
@@ -209,8 +209,7 @@ jobs:
       - name: Cleanup containers
         if: always()
         run: |
-          cd cloudberry-pxf
-          docker compose -f concourse/docker/pxf-cbdb-dev/ubuntu/docker-compose.yml down -v || true
+          docker compose -f automation/docker-compose.yml down -v || true
 
       - name: Upload test artifacts
         if: always()
