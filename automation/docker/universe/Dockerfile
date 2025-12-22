@@ -112,4 +112,3 @@ ENV PXF_BASE=/home/gpadmin/pxf
 
 COPY docker/universe/entrypoint.sh /entrypoint.sh
 RUN sudo chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]

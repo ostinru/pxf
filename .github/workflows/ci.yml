@@ -146,6 +146,7 @@ jobs:
           docker compose build singlecluster
           docker compose build universe
           docker compose up -d
+          docker exec universe bash -lc "/entrypoint.sh"
 
       - name: Run Test - ${{ matrix.test_group }}
         id: run_test

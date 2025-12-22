@@ -9,6 +9,7 @@ docker compose down -v
 docker compose build singlecluster
 docker compose build universe
 docker compose up -d
+docker exec universe bash -lc "/entrypoint.sh"
 docker exec universe bash -lc \
   "cd /home/gpadmin/workspace/pxf/automation/docker/universe && ./scripts/run_tests.sh sanity"
 ```
