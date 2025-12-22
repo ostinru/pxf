@@ -6,7 +6,7 @@ set -euo pipefail
 # Use a unique var name to avoid clobbering by sourced env scripts
 RUN_TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Repo root is five levels up from script dir
-REPO_ROOT="$(cd "${RUN_TESTS_DIR}/../../../../.." && pwd)"
+REPO_ROOT="$(cd "${RUN_TESTS_DIR}/../../../.." && pwd)"
 cd "${REPO_ROOT}/automation"
 
 # Load centralized env (sets JAVA_BUILD/HADOOP, GPHD_ROOT, PGPORT, etc.)
@@ -35,10 +35,10 @@ export PGHOST=127.0.0.1
 export PGOPTIONS=${PGOPTIONS:-"-c extra_float_digits=0 -c timezone='GMT-1'"}
 
 # Ensure Cloudberry env if present
-[ -f "/usr/local/cloudberry-db/cloudberry-env.sh" ] && source /usr/local/cloudberry-db/cloudberry-env.sh
+[ -f "/opt/greenplum-db-6/greenplum_path.sh" ] && source /opt/greenplum-db-6/greenplum_path.sh
 [ -f "/home/gpadmin/workspace/cloudberry/gpAux/gpdemo/gpdemo-env.sh" ] && source /home/gpadmin/workspace/cloudberry/gpAux/gpdemo/gpdemo-env.sh
 # Guarantee psql is on PATH for pg_regress/pxf_regress invocations
-export GPHOME=${GPHOME:-/usr/local/cloudberry-db}
+export GPHOME=${GPHOME:-/opt/greenplum-db-6}
 export PATH="${GPHOME}/bin:${PATH}"
 
 # Add Hadoop/HBase/Hive bins
@@ -356,7 +356,7 @@ EOF
 
 # Ensure proxy tests can login as testuser from localhost.
 ensure_testuser_pg_hba() {
-  local pg_hba="/home/gpadmin/workspace/cloudberry/gpAux/gpdemo/datadirs/qddir/demoDataDir-1/pg_hba.conf"
+  local pg_hba="/data0/database/master/pg_hba.conf"
   local entry="host all testuser 127.0.0.1/32 trust"
   local all_local="host all all 127.0.0.1/32 trust"
   local all_any="host all all 0.0.0.0/0 trust"
@@ -386,7 +386,7 @@ ensure_testuser_pg_hba() {
     fi
 
     if [ "${reload_needed}" = true ]; then
-      sudo -u gpadmin /usr/local/cloudberry-db/bin/pg_ctl -D "$(dirname "${pg_hba}")" reload >/dev/null 2>&1 || true
+      sudo -u gpadmin /opt/greenplum-db-6/bin/pg_ctl -D "$(dirname "${pg_hba}")" reload >/dev/null 2>&1 || true
     fi
   fi
 }
@@ -474,13 +474,13 @@ configure_pxf_default_hdfs_server() {
 ensure_gpupgrade_helpers() {
   export PXF_HOME=${PXF_HOME:-/usr/local/pxf}
   export PXF_BASE=${PXF_BASE:-/home/gpadmin/pxf-base}
-  export GPHOME=${GPHOME:-/usr/local/cloudberry-db}
+  export GPHOME=${GPHOME:-/opt/greenplum-db-6}
   # Provide wrappers so mvn child processes see the binaries on PATH
   for helper in pxf-pre-gpupgrade pxf-post-gpupgrade; do
     if [ ! -x "/usr/local/bin/${helper}" ]; then
       cat <<EOF | sudo tee "/usr/local/bin/${helper}" >/dev/null
 #!/usr/bin/env bash
-export GPHOME=\${GPHOME:-/usr/local/cloudberry-db}
+export GPHOME=\${GPHOME:-/opt/greenplum-db-6}
 exec /usr/local/pxf/bin/${helper} "\$@"
 EOF
       sudo chmod +x "/usr/local/bin/${helper}"
@@ -735,7 +735,7 @@ run_single_group() {
       make test
       ;;
     external-table)
-      [ -f "/usr/local/cloudberry-db/cloudberry-env.sh" ] && source /usr/local/cloudberry-db/cloudberry-env.sh
+      [ -f "/opt/greenplum-db-6/greenplum_path.sh" ] && source /opt/greenplum-db-6/greenplum_path.sh
       cd "${REPO_ROOT}/external-table"
       make installcheck
       ;;

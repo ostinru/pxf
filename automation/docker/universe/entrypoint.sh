@@ -43,9 +43,9 @@ mkdir -p /home/gpadmin/.ssh/
 ssh-keyscan -t rsa mdw > /home/gpadmin/.ssh/known_hosts
 chown -R gpadmin:gpadmin /home/gpadmin/.ssh/
 
-echo "export COORDINATOR_DATA_DIRECTORY=/data0/database/master/gpseg-1" >> /home/gpadmin/.bashrc
-echo "export MASTER_DATA_DIRECTORY=/data0/database/master/gpseg-1"      >> /home/gpadmin/.bashrc
-echo "source /opt/greenplum-db-6/greenplum_path.sh"                     >> /home/gpadmin/.bashrc
+echo "export COORDINATOR_DATA_DIRECTORY=/data0/database/master/gpseg-1" | sudo tee -a /home/gpadmin/.bashrc
+echo "export MASTER_DATA_DIRECTORY=/data0/database/master/gpseg-1"      | sudo tee -a /home/gpadmin/.bashrc
+echo "source /opt/greenplum-db-6/greenplum_path.sh"                     | sudo tee -a /home/gpadmin/.bashrc
 
 # ----------------------------------------------------------------------
 # Run gpinitsystem

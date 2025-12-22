@@ -22,7 +22,7 @@ esac
 # --------------------------------------------------------------------
 # Core paths
 # --------------------------------------------------------------------
-export GPHOME=${GPHOME:-/usr/local/cloudberry-db}
+export GPHOME=${GPHOME:-/opt/greenplum-db-6}
 export PXF_HOME=${PXF_HOME:-/usr/local/pxf}
 export PXF_BASE=${PXF_BASE:-/home/gpadmin/pxf-base}
 export GPHD_ROOT=${GPHD_ROOT:-/home/gpadmin/workspace/singlecluster}
@@ -35,7 +35,7 @@ export COMMON_JAVA_OPTS=${COMMON_JAVA_OPTS:-}
 # --------------------------------------------------------------------
 export PGHOST=${PGHOST:-localhost}
 export PGPORT=${PGPORT:-7000}
-export MASTER_DATA_DIRECTORY=${MASTER_DATA_DIRECTORY:-/home/gpadmin/workspace/cloudberry/gpAux/gpdemo/datadirs/qddir/demoDataDir-1}
+export MASTER_DATA_DIRECTORY=${MASTER_DATA_DIRECTORY:-/data0/database/master}
 # set cloudberry timezone utc
 export PGTZ=UTC
 
@@ -55,7 +55,7 @@ export PXF_JVM_OPTS=${PXF_JVM_OPTS:-"-Xmx512m -Xms256m"}
 export PXF_HOST=${PXF_HOST:-localhost}
 
 # Source Cloudberry env and demo cluster if present
-[ -f "$GPHOME/cloudberry-env.sh" ] && source "$GPHOME/cloudberry-env.sh"
+[ -f "$GPHOME/greenplum_path.sh" ] && source "$GPHOME/greenplum_path.sh"
 [ -f "/home/gpadmin/workspace/cloudberry/gpAux/gpdemo/gpdemo-env.sh" ] && source /home/gpadmin/workspace/cloudberry/gpAux/gpdemo/gpdemo-env.sh
 
 echo "[pxf-env] loaded (JAVA_BUILD=${JAVA_BUILD}, JAVA_HADOOP=${JAVA_HADOOP})"
