@@ -134,5 +134,7 @@ sudo mkdir -p /home/gpadmin/.m2
 sudo chown -R gpadmin:gpadmin /home/gpadmin/.m2
 sudo chmod -R 755 /home/gpadmin/.m2
 
+sudo chmod +x /home/gpadmin/workspace/pxf/automation/docker/universe/scripts/*.sh
+
 # Keep container running
 tail -f /dev/null

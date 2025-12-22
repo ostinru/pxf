@@ -1,6 +1,19 @@
 # paths
-export JAVA_HOME=${JAVA_HOME:=/Library/Java/Home}
-export STORAGE_ROOT=$GPHD_ROOT/storage
+# Prefer JAVA_HADOOP (from pxf-env); otherwise fall back to a default JDK8 path.
+if [ -z "${JAVA_HOME:-}" ]; then
+  if [ -n "${JAVA_HADOOP:-}" ]; then
+    export JAVA_HOME="${JAVA_HADOOP}"
+  else
+    # Auto-detect Java 8 path for different architectures
+    if [ -d "/usr/lib/jvm/java-8-openjdk-$(dpkg --print-architecture)" ]; then
+      export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-$(dpkg --print-architecture)"
+    elif [ -d "/usr/lib/jvm/java-8-openjdk" ]; then
+      export JAVA_HOME="/usr/lib/jvm/java-8-openjdk"
+    else
+      export JAVA_HOME=$(readlink -f /usr/bin/java | sed 's:/bin/java::')
+    fi
+  fi
+fiexport STORAGE_ROOT=$GPHD_ROOT/storage
 export HADOOP_STORAGE_ROOT=$STORAGE_ROOT/hadoop
 export ZOOKEEPER_STORAGE_ROOT=$STORAGE_ROOT/zookeeper
 export HBASE_STORAGE_ROOT=$STORAGE_ROOT/hbase
