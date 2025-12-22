@@ -134,9 +134,5 @@ sudo mkdir -p /home/gpadmin/.m2
 sudo chown -R gpadmin:gpadmin /home/gpadmin/.m2
 sudo chmod -R 755 /home/gpadmin/.m2
 
-# make without arguments runs all tests
-cd /home/gpadmin/workspace/pxf/automation
-make
-
 # Keep container running
-#tail -f /dev/null
+tail -f /dev/null

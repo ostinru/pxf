@@ -2,14 +2,14 @@ FROM pxf/singlecluster:3
 
 # copy hadoop files from this image later...
 
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install dependencies
 # TODO: add pyton3-psutil to greenplum dependencies
 RUN apt-get update && \
-    apt-get install -y wget lsb-release locales openjdk-11-jre-headless openjdk-8-jre-headless iproute2 sudo python-psutil && \
+    apt-get install -y wget lsb-release locales openjdk-11-jre-headless openjdk-8-jre-headless iproute2 sudo python3-psutil && \
     locale-gen en_US.UTF-8 && \
     locale-gen ru_RU.CP1251 && \
     locale-gen ru_RU.UTF-8 && \
@@ -25,18 +25,19 @@ ENV LC_ALL en_US.UTF-8
 
 COPY docker/universe/conf/90-gpdb-sysctl.conf /etc/sysctl.d/90-gpdb-sysctl.conf
 COPY docker/universe/conf/limits.conf /etc/security/limits.d/limits.conf
+COPY docker/universe/scripts /home/gpadmin/workspace/scripts
 
 # Copy Greenplum:
-COPY docker/universe/debs/greenplum-db-6_6.0.0-bionic-dev_amd64.deb /tmp/
-RUN apt-get install -y /tmp/greenplum-db-6_6.0.0-bionic-dev_amd64.deb && \
-    rm /tmp/greenplum-db-6_6.0.0-bionic-dev_amd64.deb
+COPY docker/universe/debs/greenplum-db-6_6.0.0-jammy-dev_amd64.deb /tmp/
+RUN apt-get install -y /tmp/greenplum-db-6_6.0.0-jammy-dev_amd64.deb && \
+    rm /tmp/greenplum-db-6_6.0.0-jammy-dev_amd64.deb
 
 COPY docker/universe/gpinitsystem_singlenode /tmp/
 
 # Install PXF
-COPY docker/universe/debs/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb /tmp/
-RUN apt-get install -y /tmp/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb && \
-    rm /tmp/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb
+COPY docker/universe/debs/greenplum-pxf-6_6.10.1-jammy-dev_amd64.deb /tmp/
+RUN apt-get install -y /tmp/greenplum-pxf-6_6.10.1-jammy-dev_amd64.deb && \
+    rm /tmp/greenplum-pxf-6_6.10.1-jammy-dev_amd64.deb
 
 # --------------------------------------------------------------------
 # Install automation dependencies
@@ -81,8 +82,9 @@ USER gpadmin
 # allowing passwordless SSH access. It generates a new SSH key pair if one
 # does not already exist, and configures the necessary permissions.
 # ----------------------------------------------------------------------
-RUN \
-  mkdir /home/gpadmin/.ssh && chown -R gpadmin:gpadmin /home/gpadmin/.ssh && \
+RUN sudo mkdir -p /home/gpadmin/.ssh && \
+  sudo chown gpadmin:gpadmin /home/gpadmin && \
+  sudo chown -R gpadmin:gpadmin /home/gpadmin/.ssh && \
   ssh-keygen -t rsa -b 4096 -m PEM -C gpadmin -f /home/gpadmin/.ssh/id_rsa -P "" && \
   cat /home/gpadmin/.ssh/id_rsa.pub >> /home/gpadmin/.ssh/authorized_keys && \
   chmod 0600 /home/gpadmin/.ssh/authorized_keys
@@ -92,7 +94,7 @@ RUN \
 # --------------------------------------------------------------------
 # Setup the Hadoop singlecluster
 ENV GPHD_ROOT=/home/gpadmin/workspace/singlecluster
-RUN mkdir -p $GPHD_ROOT && chown gpadmin:gpadmin $GPHD_ROOT
+RUN sudo mkdir -p $GPHD_ROOT && sudo chown gpadmin:gpadmin $GPHD_ROOT
 
 ENV HADOOP_ROOT=$GPHD_ROOT/hadoop
 ENV HBASE_ROOT=$GPHD_ROOT/hbase
@@ -113,7 +115,7 @@ ENV PXF_BASE=/home/gpadmin/pxf
 EXPOSE 5432 22
 
 # Copy automation directory into container
-RUN mkdir -p /home/gpadmin/workspace/pxf
+RUN sudo mkdir -p /home/gpadmin/workspace/pxf
 COPY . /home/gpadmin/workspace/pxf/automation
 RUN sudo chown -R gpadmin:gpadmin /home/gpadmin/workspace/pxf/automation
 RUN sudo chmod -R 755 /home/gpadmin/workspace/pxf/automation
