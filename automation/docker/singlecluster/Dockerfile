@@ -42,7 +42,9 @@ RUN mkdir -p $HADOOP_ROOT && \
     curl -fSL "$HADOOP_URL" -o hadoop.tar.gz && \
     echo "$HADOOP_SHA512 hadoop.tar.gz" | sha512sum -c && \
     tar xvf hadoop.tar.gz -C $HADOOP_ROOT --strip-components 1  --exclude="share/doc/*" --exclude="*-sources.jar" && \
-    rm hadoop.tar.gz
+    rm hadoop.tar.gz && \
+    curl -fSL "https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar" \
+      -o $HADOOP_ROOT/share/hadoop/common/lib/javax.activation-api-1.2.0.jar
 
 RUN mkdir -p $HIVE_ROOT && \
     curl -fSL $HIVE_URL -o hive.tar.gz && \
@@ -67,6 +69,18 @@ RUN mkdir -p $TEZ_ROOT && \
     echo "$TEZ_SHA512 tez.tar.gz" | sha512sum -c && \
     tar xvf tez.tar.gz -C $TEZ_ROOT --strip-components 1 && \
     rm tez.tar.gz
+
+# Install MinIO and mc
+RUN arch="${TARGETARCH:-$(uname -m)}"; \
+    case "$arch" in \
+      amd64|x86_64) minio_arch="amd64" ;; \
+      arm64|aarch64) minio_arch="arm64" ;; \
+      *) echo "Unsupported architecture: ${arch}"; exit 1 ;; \
+    esac; \
+    mkdir -p /home/gpadmin/workspace && \
+    curl -o /home/gpadmin/workspace/minio -fSL "https://dl.min.io/server/minio/release/linux-${minio_arch}/minio" && \
+    curl -o /home/gpadmin/workspace/mc -fSL "https://dl.min.io/client/mc/release/linux-${minio_arch}/mc" && \
+    chmod +x /home/gpadmin/workspace/minio /home/gpadmin/workspace/mc \
 
 COPY docker/singlecluster/templates $GPHD_ROOT
 COPY docker/singlecluster/conf $GPHD_ROOT/conf

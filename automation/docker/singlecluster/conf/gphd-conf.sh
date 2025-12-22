@@ -13,7 +13,8 @@ if [ -z "${JAVA_HOME:-}" ]; then
       export JAVA_HOME=$(readlink -f /usr/bin/java | sed 's:/bin/java::')
     fi
   fi
-fiexport STORAGE_ROOT=$GPHD_ROOT/storage
+fi
+export STORAGE_ROOT=$GPHD_ROOT/storage
 export HADOOP_STORAGE_ROOT=$STORAGE_ROOT/hadoop
 export ZOOKEEPER_STORAGE_ROOT=$STORAGE_ROOT/zookeeper
 export HBASE_STORAGE_ROOT=$STORAGE_ROOT/hbase

@@ -46,9 +46,18 @@ RUN apt-get install -y /tmp/greenplum-pxf-6_6.10.1-bionic-dev_amd64.deb && \
 RUN localedef -c -i ru_RU -f CP1251 ru_RU.CP1251
 
 # automation uses golang
-RUN wget -O - "https://go.dev/dl/go1.24.5.linux-amd64.tar.gz" | tar -C /usr/local -xz && \
-	export PATH="/usr/local/go/bin:$PATH" && \
-	go version
+ARG TARGETARCH
+RUN set -e; \
+    arch="${TARGETARCH:-$(uname -m)}"; \
+    case "$arch" in \
+      amd64|x86_64) go_arch="amd64" ;; \
+      arm64|aarch64) go_arch="arm64" ;; \
+      *) echo "Unsupported architecture: ${arch}"; exit 1 ;; \
+    esac; \
+    cd /tmp && \
+    wget -O go.tgz -q "https://go.dev/dl/go1.23.3.linux-${go_arch}.tar.gz" && \
+    sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go.tgz && rm go.tgz \
+
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 # automation uses maven and different tools
